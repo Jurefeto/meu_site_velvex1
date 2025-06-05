@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finalizar Compra - Velvex</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header class="site-header">
+        <div class="search-area">
+            <a href="#" id="openSearchPopup">Pesquisar</a>
+        </div>
+        <nav class="main-nav">
+            <a href="{{ url_for('home') }}">Início</a>
+            <a href="{{ url_for('loja_page') }}">Loja (Criar Anúncio)</a>
+            <a href="{{ url_for('anuncios_page') }}">Anuncios</a> 
+        </nav>
+        <div class="account-area">
+            {% if session.user_id %}
+                <a href="{{ url_for('minha_conta_page') }}">{{ session.user_nome }}</a>
+                {% if session.is_admin %}
+                    <a href="{{ url_for('admin_dashboard') }}" class="admin-link">Admin</a> 
+                {% endif %}
+                <a href="{{ url_for('logout') }}">Logout</a>
+            {% else %}
+                <a href="{{ url_for('login_page') }}">Minha Conta / Login</a>
+            {% endif %}
+            {# Link do Carrinho no cabeçalho #}
+            <a href="{{ url_for('carrinho_page') }}" class="cart-link">🛒 Carrinho</a>
+        </div>
+    </header>
+
+    <main class="page-content-container">
+        <h2 class="section-title">Finalizar Compra</h2>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <ul class="flash-messages">
+                {% for category, message in messages %}
+                    <li class="flash-message flash-{{ category }}">{{ message }}</li>
+                {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+
+        {% if itens_carrinho %}
+            <div class="checkout-summary-box form-container"> {# Mantém form-container para estilos de caixa #}
+                <h3>Resumo do Pedido</h3>
+                <ul class="checkout-item-list">
+                    {% for item in itens_carrinho %}
+                    <li>
+                        <span class="item-name">{{ item.anuncio.titulo }}</span>
+                        <span class="item-qty">x{{ item.quantidade }}</span>
+                        <span class="item-price">R$ {{ "%.2f"|format(item.anuncio.preco * item.quantidade|float) }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                <hr class="separator-line">
+                <p class="checkout-total"><strong>Total a Pagar: R$ {{ "%.2f"|format(total_carrinho) }}</strong></p>
+                
+                <p class="checkout-info-text">
+                    Esta é uma página de exemplo. A integração com um gateway de pagamento (como PayPal, Stripe, PagSeguro) seria feita aqui.
+                </p>
+                <button type="button" class="btn-principal" onclick="alert('Funcionalidade de pagamento não implementada! 😉');">Prosseguir para o Pagamento</button>
+                <a href="{{ url_for('carrinho_page') }}" class="btn-secondary-inverted">Voltar ao Carrinho</a> {# NOVA CLASSE DE BOTÃO SECUNDÁRIO #}
+            </div>
+        {% else %}
+            <p class="no-ads-message">Não há itens para finalizar a compra.</p>
+        {% endif %}
+    </main>
+
+    {# Pop-up de Busca (Search Popup) #}
+    <div id="searchPopup" class="search-popup-overlay">
+        <div class="search-popup-content">
+            <span class="close-popup" id="closeSearchPopup">&times;</span>
+            <h2>Pesquisar no Site</h2>
+            <form action="{{ url_for('search_results_page') }}" method="get" class="popup-search-form">
+                <input type="search" name="query_popup" placeholder="O que você procura?" aria-label="Campo de busca popup">
+                <button type="submit" class="btn-principal">Buscar</button>
+            </form>
+            <p class="popup-info-text">(Busca nos anúncios do site.)</p>
+        </div>
+    </div>
+    <script>
+        // Script do Pop-up de Busca (como nas outras páginas)
+        const openSearchButton = document.getElementById('openSearchPopup');
+        const closeSearchButton = document.getElementById('closeSearchPopup');
+        const searchPopupOverlay = document.getElementById('searchPopup');
+        if(openSearchButton && searchPopupOverlay){openSearchButton.addEventListener('click', function(event){event.preventDefault();searchPopupOverlay.classList.add('active');});}
+        if(closeSearchButton && searchPopupOverlay){closeSearchButton.addEventListener('click', function(){searchPopupOverlay.classList.remove('active');});}
+        if(searchPopupOverlay){searchPopupOverlay.addEventListener('click', function(event){if(event.target === searchPopupOverlay){searchPopupOverlay.classList.remove('active');}});}
+    </script>
+</body>
+</html>

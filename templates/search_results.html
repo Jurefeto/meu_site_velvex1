@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resultados da Busca para "{{ query }}" - Velvex</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header class="site-header">
+        <div class="search-area">
+            <a href="#" id="openSearchPopup">Pesquisar</a>
+        </div>
+        <nav class="main-nav">
+            <a href="{{ url_for('home') }}">Início</a>
+            <a href="{{ url_for('loja_page') }}">Loja (Criar Anúncio)</a>
+            <a href="{{ url_for('anuncios_page') }}">Anuncios</a> 
+        </nav>
+        <div class="account-area">
+            {% if session.user_id %}
+                <a href="{{ url_for('minha_conta_page') }}">{{ session.user_nome }}</a>
+                {% if session.is_admin %}
+                    <a href="{{ url_for('admin_dashboard') }}" style="color: #ffc107;">Admin</a> 
+                {% endif %}
+                <a href="{{ url_for('logout') }}">Logout</a>
+            {% else %}
+                <a href="{{ url_for('login_page') }}">Minha Conta / Login</a>
+            {% endif %}
+        </div>
+    </header>
+
+    <main class="page-content-container">
+        <div class="lista-anuncios-container">
+            <h2>Resultados da Busca para: <span style="color:#8ab4f8;">"{{ query }}"</span></h2>
+            {% if resultados %}
+                <ul class="anuncios-grid">
+                    {% for anuncio_item in resultados %}
+                        {% set primeira_imagem = (anuncio_item.imagens_nomes.split(',')[0]).strip() if anuncio_item.imagens_nomes else None %}
+                        <li class="anuncio-card clickable-anuncio" 
+                            data-titulo="{{ anuncio_item.titulo }}"
+                            data-descricao="{{ anuncio_item.descricao }}"
+                            data-preco="{{ "%.2f"|format(anuncio_item.preco|float) }}"
+                            data-categoria="{{ anuncio_item.categoria }}"
+                            data-condicao="{{ anuncio_item.condicao }}"
+                            data-imagens="{{ anuncio_item.imagens_nomes if anuncio_item.imagens_nomes else '' }}"
+                            data-id="{{ anuncio_item.id }}">
+                            
+                            <div class="anuncio-imagem-container">
+                                {% if primeira_imagem %}
+                                    <img src="{{ url_for('static', filename='uploads/anuncios/' + primeira_imagem) }}" alt="{{ anuncio_item.titulo }}" class="anuncio-imagem">
+                                {% else %}
+                                    <div class="anuncio-imagem-placeholder-text">Sem Imagem</div>
+                                {% endif %}
+                            </div>
+                            <h3>{{ anuncio_item.titulo }}</h3>
+                            <p class="anuncio-categoria"><strong>Categoria:</strong> {{ anuncio_item.categoria.replace('_', ' ').capitalize() }}</p>
+                            <p class="anuncio-preco"><strong>Preço:</strong> R$ {{ "%.2f"|format(anuncio_item.preco|float) }}</p>
+                            <p class="anuncio-condicao"><strong>Condição:</strong> {{ anuncio_item.condicao.replace('_', ' ').capitalize() }}</p>
+                            <p class="anuncio-descricao">{{ anuncio_item.descricao|truncate(80, True) }}</p> 
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="sem-anuncios">Nenhum anúncio encontrado para "{{ query }}". Tente outros termos!</p>
+            {% endif %}
+        </div>
+    </main>
+
+    <footer class="site-footer-nav">
+        <nav>
+            <a href="{{ url_for('quem_somos_page') }}">Quem Somos</a>
+            <a href="{{ url_for('compre_page') }}">Compre</a>
+            <a href="{{ url_for('venda_page') }}">Venda</a>
+            <a href="{{ url_for('suporte_page') }}">Suporte</a>
+            <a href="{{ url_for('termos_page') }}">Termo de Responsabilidade</a>
+        </nav>
+    </footer>
+
+    <div id="searchPopup" class="search-popup-overlay">
+        <div class="search-popup-content">
+            <span class="close-popup" id="closeSearchPopup">&times;</span>
+            <h2>Pesquisar no Site</h2>
+            <form action="{{ url_for('search_results_page') }}" method="get" class="popup-search-form">
+                <input type="search" name="query_popup" placeholder="O que você procura?" aria-label="Campo de busca popup">
+                <button type="submit" class="btn-principal">Buscar</button>
+            </form>
+            <p style="font-size: 0.8em; color: #ccc; margin-top:15px;">(Busca nos anúncios do site.)</p>
+        </div>
+    </div>
+
+    <div id="anuncioDetalhePopup" class="anuncio-popup-overlay">
+        <div class="anuncio-popup-content">
+            <span class="close-anuncio-popup" id="closeAnuncioDetalhePopup">&times;</span>
+            
+            <div class="anuncio-popup-gallery-column">
+                <div class="image-nav-wrapper">
+                    <button class="popup-gallery-nav prev" id="prevImagePopup">&lt;</button>
+                    <div class="anuncio-popup-imagem-principal-container">
+                        <img id="popupAnuncioImgPrincipal" src="" alt="Imagem Principal do Anúncio" class="anuncio-popup-imagem-principal">
+                    </div>
+                    <button class="popup-gallery-nav next" id="nextImagePopup">&gt;</button>
+                </div>
+                <div id="popupAnuncioThumbnails" class="anuncio-popup-thumbnails">
+                    </div>
+            </div>
+
+            <div class="anuncio-popup-info">
+                <h2 id="popupAnuncioTitulo"></h2>
+                <p class="popup-anuncio-preco"><strong>Preço:</strong> R$ <span id="popupAnuncioPreco"></span></p>
+                <p><strong>Categoria:</strong> <span id="popupAnuncioCategoria"></span></p>
+                <p><strong>Condição:</strong> <span id="popupAnuncioCondicao"></span></p>
+                <p id="popupAnuncioDescricao" class="popup-anuncio-descricao-completa"></p>
+                <button type="button" class="btn-principal btn-comprar-popup">Comprar (Exemplo)</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Script do Pop-up de Busca (copie da página anuncios.html)
+        // ...
+        // Script para o Pop-up de Detalhes do Anúncio (copie da página anuncios.html)
+        // ... (todo o script JavaScript dos dois pop-ups deve ser copiado aqui)
+        const openSearchButton = document.getElementById('openSearchPopup');
+        const closeSearchButton = document.getElementById('closeSearchPopup');
+        const searchPopupOverlay = document.getElementById('searchPopup');
+        if(openSearchButton && searchPopupOverlay){openSearchButton.addEventListener('click', function(event){event.preventDefault();searchPopupOverlay.classList.add('active');});}
+        if(closeSearchButton && searchPopupOverlay){closeSearchButton.addEventListener('click', function(){searchPopupOverlay.classList.remove('active');});}
+        if(searchPopupOverlay){searchPopupOverlay.addEventListener('click', function(event){if(event.target === searchPopupOverlay){searchPopupOverlay.classList.remove('active');}});}
+
+        const anuncioCards = document.querySelectorAll('.clickable-anuncio');
+        const anuncioDetalhePopup = document.getElementById('anuncioDetalhePopup');
+        const closeAnuncioDetalheButton = document.getElementById('closeAnuncioDetalhePopup');
+
+        let currentPopupImages = [];
+        let currentImageIndex = 0;
+        // Não precisamos de currentAnuncioId aqui se não houver botões de Editar/Deletar
+
+        if (anuncioCards.length > 0 && anuncioDetalhePopup) {
+            const popupAnuncioImgPrincipal = document.getElementById('popupAnuncioImgPrincipal');
+            const popupAnuncioThumbnails = document.getElementById('popupAnuncioThumbnails');
+            const popupAnuncioTitulo = document.getElementById('popupAnuncioTitulo');
+            const popupAnuncioDescricao = document.getElementById('popupAnuncioDescricao');
+            const popupAnuncioPreco = document.getElementById('popupAnuncioPreco');
+            const popupAnuncioCategoria = document.getElementById('popupAnuncioCategoria');
+            const popupAnuncioCondicao = document.getElementById('popupAnuncioCondicao');
+            const prevImageButton = document.getElementById('prevImagePopup');
+            const nextImageButton = document.getElementById('nextImagePopup');
+
+            function displayCurrentImage() {
+                if (popupAnuncioImgPrincipal && currentPopupImages.length > 0) {
+                    popupAnuncioImgPrincipal.src = "{{ url_for('static', filename='uploads/anuncios/') }}" + currentPopupImages[currentImageIndex];
+                    popupAnuncioImgPrincipal.alt = popupAnuncioTitulo.textContent || "Imagem Principal";
+                    popupAnuncioImgPrincipal.style.display = 'block';
+                } else if (popupAnuncioImgPrincipal) {
+                    popupAnuncioImgPrincipal.src = "";
+                    popupAnuncioImgPrincipal.alt = "Sem imagem";
+                    popupAnuncioImgPrincipal.style.display = 'none';
+                }
+                const thumbnails = popupAnuncioThumbnails.querySelectorAll('.anuncio-popup-thumbnail-item');
+                thumbnails.forEach((thumb, index) => {
+                    thumb.classList.toggle('active-thumbnail', index === currentImageIndex);
+                });
+                if(prevImageButton) prevImageButton.disabled = currentImageIndex === 0;
+                if(nextImageButton) nextImageButton.disabled = currentImageIndex >= currentPopupImages.length - 1;
+            }
+            
+            anuncioCards.forEach(card => {
+                card.addEventListener('click', function() {
+                    if (popupAnuncioTitulo) popupAnuncioTitulo.textContent = this.dataset.titulo || "N/A";
+                    if (popupAnuncioDescricao) popupAnuncioDescricao.textContent = this.dataset.descricao || "N/A";
+                    if (popupAnuncioPreco) popupAnuncioPreco.textContent = this.dataset.preco || "0.00";
+                    if (popupAnuncioCategoria) popupAnuncioCategoria.textContent = (this.dataset.categoria || "N/A").replace(/_/g,' ').capitalize();
+                    if (popupAnuncioCondicao) popupAnuncioCondicao.textContent = (this.dataset.condicao || "N/A").replace(/_/g,' ').capitalize();
+                    
+                    const imagensNomesStr = this.dataset.imagens;
+                    currentPopupImages = []; 
+                    if (popupAnuncioThumbnails) popupAnuncioThumbnails.innerHTML = ''; 
+
+                    if (imagensNomesStr) {
+                        currentPopupImages = imagensNomesStr.split(',').map(s => s.trim()).filter(s => s);
+                    }
+                    currentImageIndex = 0; 
+                    displayCurrentImage(); 
+
+                    if (popupAnuncioThumbnails && currentPopupImages.length > 0) {
+                        currentPopupImages.forEach((imgNome, index) => {
+                            const thumb = document.createElement('img');
+                            thumb.src = "{{ url_for('static', filename='uploads/anuncios/') }}" + imgNome;
+                            thumb.alt = "Miniatura " + (index + 1);
+                            thumb.classList.add('anuncio-popup-thumbnail-item');
+                            thumb.dataset.index = index; 
+                            thumb.addEventListener('click', function() {
+                                currentImageIndex = parseInt(this.dataset.index);
+                                displayCurrentImage(); 
+                            });
+                            popupAnuncioThumbnails.appendChild(thumb);
+                        });
+                         const thumbnails = popupAnuncioThumbnails.querySelectorAll('.anuncio-popup-thumbnail-item');
+                         if (thumbnails.length > currentImageIndex) thumbnails[currentImageIndex].classList.add('active-thumbnail');
+                    }
+                    anuncioDetalhePopup.classList.add('active');
+                });
+            });
+            if (prevImageButton) {prevImageButton.addEventListener('click', function() {if (currentImageIndex > 0) {currentImageIndex--;displayCurrentImage();}});}
+            if (nextImageButton) {nextImageButton.addEventListener('click', function() {if (currentImageIndex < currentPopupImages.length - 1) {currentImageIndex++;displayCurrentImage();}});}
+            if (closeAnuncioDetalheButton) {closeAnuncioDetalheButton.addEventListener('click', function() {anuncioDetalhePopup.classList.remove('active'); });}
+            if (anuncioDetalhePopup) { anuncioDetalhePopup.addEventListener('click', function(event) { if (event.target === anuncioDetalhePopup) { anuncioDetalhePopup.classList.remove('active'); } });}
+        }
+        String.prototype.capitalize = function() {
+            return this.replace(/\b\w/g, char => char.toUpperCase()).replace(/_/g, ' ');
+        }
+    </script>
+</body>
+</html>

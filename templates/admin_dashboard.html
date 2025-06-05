@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Admin - Velvex</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header class="site-header">
+        <div class="search-area">
+            <a href="#" id="openSearchPopup">Pesquisar</a>
+        </div>
+        <nav class="main-nav">
+            <a href="{{ url_for('home') }}">Início</a>
+            <a href="{{ url_for('loja_page') }}">Loja (Criar Anúncio)</a>
+            <a href="{{ url_for('anuncios_page') }}">Anuncios</a> 
+        </nav>
+        <div class="account-area">
+            {% if session.user_id %}
+                <a href="{{ url_for('minha_conta_page') }}">{{ session.user_nome }}</a>
+                {% if session.is_admin %}
+                    <a href="{{ url_for('admin_dashboard') }}" class="admin-link">Admin</a> 
+                {% endif %}
+                <a href="{{ url_for('logout') }}">Logout</a>
+            {% else %}
+                <a href="{{ url_for('login_page') }}">Minha Conta / Login</a>
+            {% endif %}
+        </div>
+    </header>
+
+    <main class="page-content-container admin-page">
+        <div class="admin-panel">
+            <h1>Dashboard Administrativo</h1>
+            
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <ul class="flash-messages flash-messages_admin">
+                    {% for category, message in messages %}
+                        <li class="flash-message flash-{{ category }}">{{ message }}</li>
+                    {% endfor %}
+                    </ul>
+                {% endif %}
+            {% endwith %}
+
+            <section class="admin-stats">
+                <h2>Estatísticas Gerais</h2>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <h3>Total de Usuários</h3>
+                        <p>{{ num_total_usuarios }}</p>
+                    </div>
+                    <div class="stat-item">
+                        <h3>Anúncios Pendentes</h3>
+                        <p>{{ num_anuncios_pendentes }}</p>
+                    </div>
+                    <div class="stat-item">
+                        <h3>Anúncios Aprovados</h3>
+                        <p>{{ num_anuncios_aprovados }}</p>
+                    </div>
+                    <div class="stat-item">
+                        <h3>Anúncios Rejeitados</h3>
+                        <p>{{ num_anuncios_rejeitados }}</p>
+                    </div>
+                    {# REMOVIDO: Estatísticas de Ofertas #}
+                    {#
+                    <div class="stat-item">
+                        <h3>Ofertas Pendentes</h3>
+                        <p>{{ num_ofertas_pendentes }}</p>
+                    </div>
+                    <div class="stat-item">
+                        <h3>Ofertas Aceitas</h3>
+                        <p>{{ num_ofertas_aceitas }}</p>
+                    </div>
+                    <div class="stat-item">
+                        <h3>Ofertas Rejeitadas</h3>
+                        <p>{{ num_ofertas_rejeitadas }}</p>
+                    </div>
+                    #}
+                </div>
+            </section>
+
+            <section class="admin-actions">
+                <h2>Ações Administrativas</h2>
+                <ul class="admin-options">
+                    <li><a href="{{ url_for('admin_aprovar_anuncios_page') }}" class="btn-principal">Aprovar Anúncios Pendentes</a></li>
+                    <li><a href="{{ url_for('admin_gerenciar_usuarios_page') }}" class="btn-principal">Gerenciar Usuários</a></li>
+                    {# REMOVIDO: Link para Gerenciar Ofertas #}
+                    {# <li><a href="{{ url_for('admin_gerenciar_ofertas_page') }}" class="btn-principal">Gerenciar Ofertas</a></li> #}
+                </ul>
+            </section>
+        </div>
+    </main>
+
+    <footer class="site-footer-nav">
+        <nav>
+            <a href="{{ url_for('quem_somos_page') }}">Quem Somos</a>
+            <a href="{{ url_for('compre_page') }}">Como Comprar</a>
+            <a href="{{ url_for('venda_page') }}">Como Vender</a>
+            <a href="{{ url_for('suporte_page') }}">Suporte</a>
+            <a href="{{ url_for('termos_page') }}">Termos de Serviço</a>
+        </nav>
+    </footer>
+
+    {# Pop-ups (Search e AnuncioDetalhe) permanecem os mesmos #}
+    <div id="searchPopup" class="search-popup-overlay">
+        <div class="search-popup-content">
+            <span class="close-popup" id="closeSearchPopup">&times;</span>
+            <h2>Pesquisar no Site</h2>
+            <form action="{{ url_for('search_results_page') }}" method="get" class="popup-search-form">
+                <input type="search" name="query_popup" placeholder="O que você procura?" aria-label="Campo de busca popup">
+                <button type="submit" class="btn-principal">Buscar</button>
+            </form>
+            <p class="popup-info-text">(Busca nos anúncios do site.)</p>
+        </div>
+    </div>
+    
+    <script>
+        // Script do Pop-up de Busca (como nas outras páginas)
+        const openSearchButton = document.getElementById('openSearchPopup');
+        const closeSearchButton = document.getElementById('closeSearchPopup');
+        const searchPopupOverlay = document.getElementById('searchPopup');
+        if(openSearchButton && searchPopupOverlay){openSearchButton.addEventListener('click', function(event){event.preventDefault();searchPopupOverlay.classList.add('active');});}
+        if(closeSearchButton && searchPopupOverlay){closeSearchButton.addEventListener('click', function(){searchPopupOverlay.classList.remove('active');});}
+        if(searchPopupOverlay){searchPopupOverlay.addEventListener('click', function(event){if(event.target === searchPopupOverlay){searchPopupOverlay.classList.remove('active');}});}
+    </script>
+</body>
+</html>

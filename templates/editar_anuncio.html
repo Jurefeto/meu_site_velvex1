@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editar Anúncio: {{ anuncio.titulo }} - Velvex</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header class="site-header">
+        <div class="search-area">
+            <a href="#" id="openSearchPopup">Pesquisar</a>
+        </div>
+        <nav class="main-nav">
+            <a href="{{ url_for('home') }}">Início</a>
+            <a href="{{ url_for('loja_page') }}">Loja (Criar Anúncio)</a>
+            <a href="{{ url_for('anuncios_page') }}">Anuncios</a> 
+        </nav>
+        <div class="account-area">
+            {% if session.user_id %}
+                <a href="{{ url_for('minha_conta_page') }}">{{ session.user_nome }}</a>
+                {% if session.is_admin %}
+                    <a href="{{ url_for('admin_dashboard') }}" style="color: #ffc107;">Admin</a> 
+                {% endif %}
+                <a href="{{ url_for('logout') }}">Logout</a>
+            {% else %}
+                <a href="{{ url_for('login_page') }}">Minha Conta / Login</a>
+            {% endif %}
+        </div>
+    </header>
+
+    <main class="page-content-container">
+        <div class="form-container anuncio-form-wrapper">
+            <h2>Editar Anúncio</h2>
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <ul class="flash-messages flash-messages_loja">
+                    {% for category, message in messages %}
+                        <li class="flash-message flash-{{ category }}">{{ message }}</li>
+                    {% endfor %}
+                    </ul>
+                {% endif %}
+            {% endwith %}
+            
+            <form action="{{ url_for('editar_anuncio_action', anuncio_id=anuncio.id) }}" method="post" class="user-form" id="formEditarAnuncio" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="anuncio_titulo">Título do Anúncio:</label>
+                    <input type="text" id="anuncio_titulo" name="anuncio_titulo" value="{{ anuncio.titulo }}" required>
+                </div>
+                <div class="form-group">
+                    <label for="anuncio_descricao">Descrição Detalhada:</label>
+                    <textarea id="anuncio_descricao" name="anuncio_descricao" rows="5" required>{{ anuncio.descricao }}</textarea>
+                </div>
+                <div class="form-group">
+                    <label for="anuncio_categoria">Categoria:</label>
+                    <select id="anuncio_categoria" name="anuncio_categoria" required>
+                        <option value="" disabled>Selecione uma categoria</option>
+                        {% set categorias_opts = ["sneakers", "vestuario_camisetas", "vestuario_moletons", "vestuario_jaquetas", "vestuario_calcas_shorts", "acessorios_bones", "acessorios_bolsas", "acessorios_outros"] %}
+                        {% for cat_opt in categorias_opts %}
+                            <option value="{{ cat_opt }}" {% if anuncio.categoria == cat_opt %}selected{% endif %}>
+                                {{ cat_opt.replace('_', ' - ').replace('sneakers', 'Tênis (Sneakers)').replace('vestuario', 'Vestuário').replace('acessorios', 'Acessórios').capitalize() }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="anuncio_preco">Preço (R$):</label>
+                    <input type="number" id="anuncio_preco" name="anuncio_preco" value="{{ "%.2f"|format(anuncio.preco|float) }}" step="0.01" min="0" required>
+                </div>
+                <div class="form-group">
+                    <label for="anuncio_condicao">Condição do Produto:</label>
+                    <select id="anuncio_condicao" name="anuncio_condicao" required>
+                        <option value="" disabled>Selecione a condição</option>
+                        {% set condicoes_opts = ["novo_com_etiqueta", "novo_sem_etiqueta", "usado_como_novo", "usado_bom_estado", "usado_com_marcas"] %}
+                        {% for cond_opt in condicoes_opts %}
+                            <option value="{{ cond_opt }}" {% if anuncio.condicao == cond_opt %}selected{% endif %}>
+                                {{ cond_opt.replace('_', ' ').capitalize() }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Imagens Atuais:</label>
+                    <div class="current-images-preview" style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px;">
+                        {% if anuncio.imagens_nomes %}
+                            {% for img_nome in anuncio.imagens_nomes.split(',') %}
+                                {% if img_nome %}
+                                    <img src="{{ url_for('static', filename='uploads/anuncios/' + img_nome.strip()) }}" alt="Imagem atual" style="width: 80px; height: 80px; object-fit: cover; border-radius: 4px;">
+                                {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            <p style="color:#ccc; font-size:0.9em;">Nenhuma imagem cadastrada.</p>
+                        {% endif %}
+                    </div>
+                    <label for="anuncio_imagens">Carregar Novas Imagens (substituirá as atuais se selecionadas):</label>
+                    <input type="file" id="anuncio_imagens" name="anuncio_imagens" accept="image/png, image/jpeg, image/webp" multiple>
+                    <small>Selecione novas imagens para substituir todas as atuais. Se não selecionar, as atuais serão mantidas. Formatos: PNG, JPG, WEBP. Máx: 5MB.</small>
+                </div>
+                
+                <button type="submit" class="btn-principal">Salvar Alterações</button>
+                <div class="form-links" style="margin-top: 15px;">
+                    {% if session.get('is_admin') %}
+                        <a href="{{ url_for('admin_aprovar_anuncios_page') }}">Cancelar</a>
+                    {% else %}
+                        <a href="{{ url_for('minha_conta_page') }}">Cancelar</a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <div id="searchPopup" class="search-popup-overlay">
+        <div class="search-popup-content">
+            <span class="close-popup" id="closeSearchPopup">&times;</span>
+            <h2>Pesquisar no Site</h2>
+            <form action="{{ url_for('search_results_page') }}" method="get" class="popup-search-form">
+                <input type="search" name="query_popup" placeholder="O que você procura?" aria-label="Campo de busca popup">
+                <button type="submit" class="btn-principal">Buscar</button>
+            </form>
+            <p style="font-size: 0.8em; color: #ccc; margin-top:15px;">(Busca nos anúncios do site.)</p>
+        </div>
+    </div>
+    <script>
+        const openSearchButton = document.getElementById('openSearchPopup');
+        const closeSearchButton = document.getElementById('closeSearchPopup');
+        const searchPopupOverlay = document.getElementById('searchPopup');
+        if(openSearchButton && searchPopupOverlay){openSearchButton.addEventListener('click', function(event){event.preventDefault();searchPopupOverlay.classList.add('active');});}
+        if(closeSearchButton && searchPopupOverlay){closeSearchButton.addEventListener('click', function(){searchPopupOverlay.classList.remove('active');});}
+        if(searchPopupOverlay){searchPopupOverlay.addEventListener('click', function(event){if(event.target === searchPopupOverlay){searchPopupOverlay.classList.remove('active');}});}
+    </script>
+</body>
+</html>

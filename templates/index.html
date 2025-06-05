@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minha Loja</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header class="site-header">
+        <div class="search-area">
+            <a href="#" id="openSearchPopup">Pesquisar</a>
+        </div>
+        <nav class="main-nav">
+            <a href="{{ url_for('home') }}">Início</a> 
+            <a href="{{ url_for('loja_page') }}">Loja (Criar Anúncio)</a>   
+            <a href="{{ url_for('anuncios_page') }}">Anuncios</a> 
+        </nav>
+        <div class="account-area">
+            {% if session.user_id %}
+                <a href="{{ url_for('minha_conta_page') }}">{{ session.user_nome }}</a>
+                {% if session.is_admin %}
+                    <a href="{{ url_for('admin_dashboard') }}" style="color: #ffc107;">Admin</a> 
+                {% endif %}
+                <a href="{{ url_for('logout') }}">Logout</a>
+            {% else %}
+                <a href="{{ url_for('login_page') }}">Minha Conta / Login</a>
+            {% endif %}
+        </div>
+    </header>
+
+    <main class="hero-section">
+        <video autoplay muted loop playsinline class="hero-background-video">
+            <source src="{{ url_for('static', filename='videos/aa.mp4') }}" type="video/mp4">
+            Seu navegador não suporta a tag de vídeo.
+        </video>
+        <div class="hero-content"> 
+            <div class="promo-text-left">
+                <h1>VELVEX</h1>
+            </div>
+            <div class="promo-text-right">
+                <p>COMPRA E VENDA</p>
+            </div>
+        </div>
+    </main>
+
+    <section class="category-showcase">
+        <div class="category-panel">
+            <div class="product-images">
+                <img src="{{ url_for('static', filename='images/sneakers.png') }}" alt="Tênis Sneakers">
+            </div>
+            <h3><a href="{{ url_for('anuncios_page', categoria_filtro='sneakers') }}">Shop Sneakers &gt;</a></h3> 
+        </div>
+        <div class="category-panel">
+            <div class="product-images">
+                <img src="{{ url_for('static', filename='images/roupa.png') }}" alt="Peça de Roupa">
+            </div>
+            <h3><a href="{{ url_for('anuncios_page', categoria_filtro='vestuario') }}">Shop Apparel &gt;</a></h3> 
+        </div>
+        <div class="category-panel">
+            <div class="product-images">
+                <img src="{{ url_for('static', filename='images/bag.png') }}" alt="Bolsa">
+            </div>
+            <h3><a href="{{ url_for('anuncios_page', categoria_filtro='acessorios_bolsas') }}">Shop Bags &gt;</a></h3> 
+        </div>
+        <div class="category-panel">
+            <div class="product-images">
+                <img src="{{ url_for('static', filename='images/pulse.png') }}" alt="Acessório Pulse">
+            </div>
+            <h3><a href="{{ url_for('anuncios_page', categoria_filtro='acessorios') }}">Shop Accessories &gt;</a></h3> 
+        </div>
+    </section>
+
+    <footer class="site-footer-nav">
+        <nav>
+            <a href="{{ url_for('quem_somos_page') }}">Quem Somos</a>
+            <a href="{{ url_for('compre_page') }}">Compre</a>
+            <a href="{{ url_for('venda_page') }}">Venda</a>
+            <a href="{{ url_for('suporte_page') }}">Suporte</a>
+            <a href="{{ url_for('termos_page') }}">Termo de Responsabilidade</a>
+        </nav>
+    </footer>
+
+    <div id="searchPopup" class="search-popup-overlay">
+        <div class="search-popup-content">
+            <span class="close-popup" id="closeSearchPopup">&times;</span>
+            <h2>Pesquisar no Site</h2>
+            <form action="{{ url_for('search_results_page') }}" method="get" class="popup-search-form">
+                <input type="search" name="query_popup" placeholder="O que você procura?" aria-label="Campo de busca popup">
+                <button type="submit" class="btn-principal">Buscar</button>
+            </form>
+            <p style="font-size: 0.8em; color: #ccc; margin-top:15px;">(Busca nos anúncios do site.)</p>
+        </div>
+    </div>
+
+    <script>
+        const openSearchButton = document.getElementById('openSearchPopup');
+        const closeSearchButton = document.getElementById('closeSearchPopup');
+        const searchPopupOverlay = document.getElementById('searchPopup');
+        if(openSearchButton && searchPopupOverlay){openSearchButton.addEventListener('click', function(event){event.preventDefault();searchPopupOverlay.classList.add('active');});}
+        if(closeSearchButton && searchPopupOverlay){closeSearchButton.addEventListener('click', function(){searchPopupOverlay.classList.remove('active');});}
+        if(searchPopupOverlay){searchPopupOverlay.addEventListener('click', function(event){if(event.target === searchPopupOverlay){searchPopupOverlay.classList.remove('active');}});}
+    </script>
+</body>
+</html>

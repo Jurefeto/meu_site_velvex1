@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ titulo_da_pagina if titulo_da_pagina else 'Anúncios' }} - Velvex</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header class="site-header">
+        <div class="search-area">
+            <a href="#" id="openSearchPopup">Pesquisar</a>
+        </div>
+        <nav class="main-nav">
+            <a href="{{ url_for('home') }}">Início</a>
+            <a href="{{ url_for('loja_page') }}">Loja (Criar Anúncio)</a>
+            <a href="{{ url_for('anuncios_page') }}">Anuncios</a> 
+        </nav>
+        <div class="account-area">
+            {% if session.user_id %}
+                <a href="{{ url_for('minha_conta_page') }}">{{ session.user_nome }}</a>
+                {% if session.is_admin %}
+                    <a href="{{ url_for('admin_dashboard') }}" class="admin-link">Admin</a> 
+                {% endif %}
+                <a href="{{ url_for('logout') }}">Logout</a>
+            {% else %}
+                <a href="{{ url_for('login_page') }}">Minha Conta / Login</a>
+            {% endif %}
+        </div>
+    </header>
+
+    <main class="page-content-container">
+        <div class="anuncios-header-video-section">
+            <video autoplay muted loop class="anuncios-background-video">
+                <source src="{{ url_for('static', filename='videos/bb.mp4') }}" type="video/mp4">
+                Seu navegador não suporta a tag de vídeo.
+            </video>
+            <div class="anuncios-header-content">
+                <h2>{{ titulo_da_pagina if titulo_da_pagina else 'Nossos Anúncios Aprovados' }}</h2>
+                <form method="GET" action="{{ url_for('anuncios_page') }}" class="filtros-anuncios-form">
+                    <div class="filtro-grupo">
+                        <label for="categoria_filtro">Categoria:</label>
+                        <select name="categoria_filtro" id="categoria_filtro">
+                            <option value="">Todas</option>
+                            {# Usando categorias_form, que será uma lista de dicionários do app.py #}
+                            {% for cat in categorias_form %}
+                            <option value="{{ cat.value }}" {% if filtros_atuais.categoria_filtro == cat.value %}selected{% endif %}>{{ cat.label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="filtro-grupo">
+                        <label for="preco_min">Preço Mín (R$):</label>
+                        <input type="number" name="preco_min" id="preco_min" step="0.01" min="0" value="{{ filtros_atuais.preco_min if filtros_atuais.preco_min }}">
+                    </div>
+                    <div class="filtro-grupo">
+                        <label for="preco_max">Preço Máx (R$):</label>
+                        <input type="number" name="preco_max" id="preco_max" step="0.01" min="0" value="{{ filtros_atuais.preco_max if filtros_atuais.preco_max }}">
+                    </div>
+                    <div class="filtro-grupo">
+                        <label for="condicao_filtro">Condição:</label>
+                        <select name="condicao_filtro" id="condicao_filtro">
+                            <option value="">Todas</option>
+                            {# Usando condicoes_form, que será uma lista de dicionários do app.py #}
+                             {% for cond in condicoes_form %}
+                            <option value="{{ cond.value }}" {% if filtros_atuais.condicao_filtro == cond.value %}selected{% endif %}>{{ cond.label }}</option>
+                             {% endfor %}
+                        </select>
+                    </div>
+                    <div class="filtro-grupo">
+                        <label for="ordenar_por">Ordenar por:</label>
+                        <select name="ordenar_por" id="ordenar_por">
+                            <option value="recentes" {% if filtros_atuais.ordenar_por == 'recentes' %}selected{% endif %}>Mais Recentes</option>
+                            <option value="preco_asc" {% if filtros_atuais.ordenar_por == 'preco_asc' %}selected{% endif %}>Preço: Menor para Maior</option>
+                            <option value="preco_desc" {% if filtros_atuais.ordenar_por == 'preco_desc' %}selected{% endif %}>Preço: Maior para Menor</option>
+                        </select>
+                    </div>
+                    <div class="filtro-grupo">
+                        <button type="submit" class="btn-principal">Aplicar Filtros</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <hr class="separator-line">
+
+        <div class="lista-anuncios-container">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <ul class="flash-messages">
+                    {% for category, message in messages %}
+                        <li class="flash-message flash-{{ category }}">{{ message }}</li>
+                    {% endfor %}
+                    </ul>
+                {% endif %}
+            {% endwith %}
+
+            {% if anuncios %}
+                <ul class="anuncios-grid">
+                    {% for anuncio_item in anuncios %}
+                        {% set primeira_imagem = (anuncio_item.imagens_nomes.split(',')[0]).strip() if anuncio_item.imagens_nomes else None %}
+                        <li class="anuncio-card clickable-anuncio" 
+                            data-titulo="{{ anuncio_item.titulo }}"
+                            data-descricao="{{ anuncio_item.descricao }}"
+                            data-preco="{{ "%.2f"|format(anuncio_item.preco|float) }}"
+                            data-categoria="{{ anuncio_item.categoria }}"
+                            data-condicao="{{ anuncio_item.condicao }}"
+                            data-imagens="{{ anuncio_item.imagens_nomes if anuncio_item.imagens_nomes else '' }}"
+                            data-id="{{ anuncio_item.id }}"
+                            data-seller-id="{{ anuncio_item.user_id }}"> 
+                            
+                            <div class="anuncio-imagem-container">
+                                {% if primeira_imagem %}
+                                    <img src="{{ url_for('static', filename='uploads/anuncios/' + primeira_imagem) }}" alt="{{ anuncio_item.titulo }}" class="anuncio-imagem">
+                                {% else %}
+                                    <div class="anuncio-imagem-placeholder-text">Sem Imagem</div>
+                                {% endif %}
+                            </div>
+                            <h3>{{ anuncio_item.titulo }}</h3>
+                            <p class="anuncio-categoria"><strong>Categoria:</strong> {{ anuncio_item.categoria.replace('_', ' ').capitalize() }}</p>
+                            <p class="anuncio-preco"><strong>Preço:</strong> R$ {{ "%.2f"|format(anuncio_item.preco|float) }}</p>
+                            <p class="anuncio-condicao"><strong>Condição:</strong> {{ anuncio_item.condicao.replace('_', ' ').capitalize() }}</p>
+                            <p class="anuncio-descricao">{{ anuncio_item.descricao|truncate(80, True) }}</p> 
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                {% if filtros_atuais.categoria_filtro or filtros_atuais.preco_min or filtros_atuais.preco_max or filtros_atuais.condicao_filtro %}
+                    <p class="sem-anuncios">Nenhum anúncio encontrado com os filtros aplicados.</p>
+                {% elif request.args.get('categoria_filtro') %}
+                    <p class="sem-anuncios">Nenhum anúncio encontrado para a categoria selecionada.</p>
+                {% else %}
+                    <p class="sem-anuncios">Ainda não há anúncios aprovados publicados. <a href="{{ url_for('loja_page') }}">Crie o seu!</a></p>
+                {% endif %}
+            {% endif %}
+        </div>
+    </main>
+
+    <footer class="site-footer-nav">
+        <nav>
+            <a href="{{ url_for('quem_somos_page') }}">Quem Somos</a>
+            <a href="{{ url_for('compre_page') }}">Como Comprar</a>
+            <a href="{{ url_for('venda_page') }}">Como Vender</a>
+            <a href="{{ url_for('suporte_page') }}">Suporte</a>
+            <a href="{{ url_for('termos_page') }}">Termos de Serviço</a>
+        </nav>
+    </footer>
+
+    <div id="searchPopup" class="search-popup-overlay">
+        <div class="search-popup-content">
+            <span class="close-popup" id="closeSearchPopup">&times;</span>
+            <h2>Pesquisar no Site</h2>
+            <form action="{{ url_for('search_results_page') }}" method="get" class="popup-search-form">
+                <input type="search" name="query_popup" placeholder="O que você procura?" aria-label="Campo de busca popup">
+                <button type="submit" class="btn-principal">Buscar</button>
+            </form>
+            <p class="popup-info-text">(Busca nos anúncios do site.)</p>
+        </div>
+    </div>
+
+    {# POP-UP DE DETALHES DO ANÚNCIO (AGORA COM BOTÃO DE OFERTA E COMPRAR JÁ) #}
+    <div id="anuncioDetalhePopup" class="anuncio-popup-overlay">
+        <div class="anuncio-popup-content">
+            <span class="close-anuncio-popup" id="closeAnuncioDetalhePopup">&times;</span>
+            <div class="anuncio-popup-gallery-column">
+                <div class="image-nav-wrapper">
+                    <button class="popup-gallery-nav prev" id="prevImagePopup">&lt;</button>
+                    <div class="anuncio-popup-imagem-principal-container">
+                        <img id="popupAnuncioImgPrincipal" src="" alt="Imagem Principal do Anúncio" class="anuncio-popup-imagem-principal">
+                    </div>
+                    <button class="popup-gallery-nav next" id="nextImagePopup">&gt;</button>
+                </div>
+                <div id="popupAnuncioThumbnails" class="anuncio-popup-thumbnails"></div>
+            </div>
+            <div class="anuncio-popup-info">
+                <h2 id="popupAnuncioTitulo"></h2>
+                <p class="popup-anuncio-preco"><strong>Preço:</strong> R$ <span id="popupAnuncioPreco"></span></p>
+                <p><strong>Categoria:</strong> <span id="popupAnuncioCategoria"></span></p>
+                <p><strong>Condição:</strong> <span id="popupAnuncioCondicao"></span></p>
+                <p id="popupAnuncioDescricao" class="popup-anuncio-descricao-completa"></p>
+                
+                <div class="anuncio-popup-actions-group"> {# Grupo para os botões #}
+                    {% if session.user_id %}
+                        {# Botão Comprar Já #}
+                        <form id="buyNowForm" method="POST" class="inline-form" onsubmit="return confirm('Tem certeza que deseja comprar este item pelo preço anunciado?');">
+                            {# Adicione um token CSRF oculto se estiver usando proteção CSRF sem WTForms para este form específico #}
+                            {# <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"> #}
+                            <button type="submit" class="btn-principal btn-buy-now">Comprar Já</button>
+                        </form>
+                        {# Botão Fazer Oferta #}
+                        <button type="button" class="btn-principal btn-make-offer" id="btnMakeOfferPopup">Fazer Oferta</button>
+                    {% else %}
+                        <p class="offer-login-prompt">Para comprar ou fazer uma oferta, por favor <a href="{{ url_for('login_page') }}">faça login</a>.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# POP-UP: FAZER OFERTA #}
+    <div id="makeOfferPopup" class="search-popup-overlay">
+        <div class="search-popup-content">
+            <span class="close-popup" id="closeMakeOfferPopup">&times;</span>
+            <h2>Fazer Oferta para "<span id="offerAnuncioTitulo"></span>"</h2>
+            <p class="offer-original-price">Preço Original: R$ <span id="offerAnuncioPrecoOriginal"></span></p>
+            <form id="makeOfferForm" method="POST" class="user-form">
+                {# Adicione um token CSRF oculto se estiver usando proteção CSRF sem WTForms para este form específico #}
+                {# <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"> #}
+                <div class="form-group">
+                    <label for="valor_oferta">Sua Oferta (R$):</label>
+                    <input type="number" id="valor_oferta" name="valor_oferta" step="0.01" min="0.01" required>
+                </div>
+                <button type="submit" class="btn-principal">Enviar Oferta</button>
+            </form>
+            <p class="popup-info-text">Ofertas não podem ser inferiores a 30% do preço original.</p>
+        </div>
+    </div>
+
+    <script>
+        // Helper function to capitalize first letter and replace underscores
+        String.prototype.capitalize = function() {
+            return this.replace(/\b\w/g, char => char.toUpperCase()).replace(/_/g, ' ');
+        };
+
+        // --- Pop-up de Busca (Search Popup) ---
+        const openSearchButton = document.getElementById('openSearchPopup');
+        const closeSearchButton = document.getElementById('closeSearchPopup');
+        const searchPopupOverlay = document.getElementById('searchPopup');
+
+        if(openSearchButton && searchPopupOverlay){
+            openSearchButton.addEventListener('click', function(event){
+                event.preventDefault();
+                searchPopupOverlay.classList.add('active');
+            });
+        }
+        if(closeSearchButton && searchPopupOverlay){
+            closeSearchButton.addEventListener('click', function(){
+                searchPopupOverlay.classList.remove('active');
+            });
+        }
+        if(searchPopupOverlay){
+            searchPopupOverlay.addEventListener('click', function(event){
+                if(event.target === searchPopupOverlay){
+                    searchPopupOverlay.classList.remove('active');
+                }
+            });
+        }
+
+        // --- Pop-up de Detalhes do Anúncio (Anuncio Detalhe Popup) ---
+        const anuncioCards = document.querySelectorAll('.clickable-anuncio');
+        const anuncioDetalhePopup = document.getElementById('anuncioDetalhePopup');
+        const closeAnuncioDetalheButton = document.getElementById('closeAnuncioDetalhePopup');
+        
+        let currentPopupImages = [];
+        let currentImageIndex = 0;
+        let currentAnuncioIdForActions = null; 
+        let currentSellerId = null; 
+
+        if (anuncioCards.length > 0 && anuncioDetalhePopup) {
+            const el = { // Elementos do pop-up
+                imgPrincipal: document.getElementById('popupAnuncioImgPrincipal'),
+                thumbnailsContainer: document.getElementById('popupAnuncioThumbnails'),
+                titulo: document.getElementById('popupAnuncioTitulo'),
+                descricao: document.getElementById('popupAnuncioDescricao'),
+                preco: document.getElementById('popupAnuncioPreco'),
+                categoria: document.getElementById('popupAnuncioCategoria'),
+                condicao: document.getElementById('popupAnuncioCondicao'),
+                prevBtn: document.getElementById('prevImagePopup'),
+                nextBtn: document.getElementById('nextImagePopup'),
+                btnMakeOffer: document.getElementById('btnMakeOfferPopup'), 
+                buyNowForm: document.getElementById('buyNowForm'), 
+                offerLoginPrompt: anuncioDetalhePopup.querySelector('.offer-login-prompt') 
+            };
+
+            function displayCurrentImageInPopup() {
+                if (el.imgPrincipal && currentPopupImages.length > 0) {
+                    el.imgPrincipal.src = "{{ url_for('static', filename='uploads/anuncios/') }}" + currentPopupImages[currentImageIndex];
+                    el.imgPrincipal.alt = el.titulo.textContent || "Imagem Principal";
+                    el.imgPrincipal.style.display = 'block';
+                } else if (el.imgPrincipal) {
+                    el.imgPrincipal.src = ""; 
+                    el.imgPrincipal.alt = "Sem imagem"; 
+                    el.imgPrincipal.style.display = 'none';
+                }
+                if(el.thumbnailsContainer) {
+                    const thumbnails = el.thumbnailsContainer.querySelectorAll('.anuncio-popup-thumbnail-item');
+                    thumbnails.forEach((thumb, index) => { 
+                        thumb.classList.toggle('active-thumbnail', index === currentImageIndex);
+                    });
+                }
+                if(el.prevBtn) el.prevBtn.disabled = currentImageIndex === 0;
+                if(el.nextBtn) el.nextBtn.disabled = currentImageIndex >= currentPopupImages.length - 1;
+            }
+            
+            anuncioCards.forEach(card => {
+                card.addEventListener('click', function() {
+                    currentAnuncioIdForActions = this.dataset.id; 
+                    currentSellerId = this.dataset.sellerId; 
+                    
+                    if (el.titulo) el.titulo.textContent = this.dataset.titulo || "N/A";
+                    if (el.descricao) el.descricao.textContent = this.dataset.descricao || "N/A";
+                    if (el.preco) el.preco.textContent = this.dataset.preco || "0.00";
+                    if (el.categoria) el.categoria.textContent = (this.dataset.categoria || "N/A").replace(/_/g,' ').capitalize();
+                    if (el.condicao) el.condicao.textContent = (this.dataset.condicao || "N/A").replace(/_/g,' ').capitalize();
+                    
+                    const imagensNomesStr = this.dataset.imagens;
+                    currentPopupImages = []; 
+                    if (el.thumbnailsContainer) el.thumbnailsContainer.innerHTML = ''; 
+
+                    if (imagensNomesStr) { 
+                        currentPopupImages = imagensNomesStr.split(',').map(s => s.trim()).filter(s => s); 
+                    }
+                    currentImageIndex = 0; 
+                    displayCurrentImageInPopup(); 
+
+                    if (el.thumbnailsContainer && currentPopupImages.length > 0) {
+                        currentPopupImages.forEach((imgNome, index) => {
+                            const thumb = document.createElement('img');
+                            thumb.src = "{{ url_for('static', filename='uploads/anuncios/') }}" + imgNome;
+                            thumb.alt = "Miniatura " + (index + 1);
+                            thumb.classList.add('anuncio-popup-thumbnail-item');
+                            thumb.dataset.index = index; 
+                            thumb.addEventListener('click', function() { 
+                                currentImageIndex = parseInt(this.dataset.index); 
+                                displayCurrentImageInPopup(); 
+                            });
+                            el.thumbnailsContainer.appendChild(thumb);
+                        });
+                        const thumbnails = el.thumbnailsContainer.querySelectorAll('.anuncio-popup-thumbnail-item');
+                        if (thumbnails.length > currentImageIndex) thumbnails[currentImageIndex].classList.add('active-thumbnail');
+                    }
+                    
+                    // Lógica para mostrar/esconder os botões "Comprar Já" e "Fazer Oferta"
+                    const currentLoggedInUserId = {{ session.user_id if session.user_id else 'null' }};
+                    const isSeller = currentLoggedInUserId && currentLoggedInUserId === parseInt(currentSellerId);
+
+                    // Esconde ambos os botões e o prompt por padrão
+                    if (el.btnMakeOffer) el.btnMakeOffer.style.display = 'none';
+                    if (el.buyNowForm) el.buyNowForm.style.display = 'none';
+                    if (el.offerLoginPrompt) el.offerLoginPrompt.style.display = 'none';
+
+                    if (currentLoggedInUserId) { 
+                        if (!isSeller) { 
+                            if (el.btnMakeOffer) el.btnMakeOffer.style.display = 'inline-block'; 
+                            if (el.buyNowForm) { 
+                                el.buyNowForm.style.display = 'inline-block';
+                                // Define a action do formulário Comprar Já
+                                el.buyNowForm.action = "{{ url_for('comprar_anuncio_action', anuncio_id=0) }}".replace('0', currentAnuncioIdForActions);
+                            }
+                        } else { 
+                            if (el.offerLoginPrompt) {
+                                el.offerLoginPrompt.textContent = "Este é o seu anúncio.";
+                                el.offerLoginPrompt.style.display = 'block';
+                            }
+                        }
+                    } else { 
+                        if (el.offerLoginPrompt) {
+                             el.offerLoginPrompt.textContent = "Para comprar ou fazer uma oferta, por favor faça login.";
+                             el.offerLoginPrompt.style.display = 'block';
+                        }
+                    }
+
+                    anuncioDetalhePopup.classList.add('active');
+                });
+            });
+
+            if(el.prevBtn) {el.prevBtn.addEventListener('click', function() {if (currentImageIndex > 0) {currentImageIndex--;displayCurrentImageInPopup();}}); }
+            if(el.nextBtn) {el.nextBtn.addEventListener('click', function() {if (currentImageIndex < currentPopupImages.length - 1) {currentImageIndex++;displayCurrentImageInPopup();}}); }
+            if (closeAnuncioDetalheButton) {closeAnuncioDetalheButton.addEventListener('click', function() {anuncioDetalhePopup.classList.remove('active'); });}
+            if (anuncioDetalhePopup) { anuncioDetalhePopup.addEventListener('click', function(event) { if (event.target === anuncioDetalhePopup) { anuncioDetalhePopup.classList.remove('active'); } });}
+
+            {# Lógica para abrir o pop-up de Fazer Oferta #}
+            const makeOfferPopup = document.getElementById('makeOfferPopup');
+            const closeMakeOfferPopup = document.getElementById('closeMakeOfferPopup');
+            const offerAnuncioTitulo = document.getElementById('offerAnuncioTitulo');
+            const offerAnuncioPrecoOriginal = document.getElementById('offerAnuncioPrecoOriginal');
+            const makeOfferForm = document.getElementById('makeOfferForm');
+
+            if(el.btnMakeOffer) {
+                el.btnMakeOffer.addEventListener('click', function() {
+                    if (currentAnuncioIdForActions) { 
+                        if(offerAnuncioTitulo) offerAnuncioTitulo.textContent = el.titulo.textContent;
+                        if(offerAnuncioPrecoOriginal) offerAnuncioPrecoOriginal.textContent = el.preco.textContent;
+                        if(makeOfferForm) makeOfferForm.action = "{{ url_for('fazer_oferta_action', anuncio_id=0) }}".replace('0', currentAnuncioIdForActions);
+                        
+                        anuncioDetalhePopup.classList.remove('active'); 
+                        makeOfferPopup.classList.add('active'); 
+                    }
+                });
+            }
+
+            if(closeMakeOfferPopup) {
+                closeMakeOfferPopup.addEventListener('click', function() {
+                    makeOfferPopup.classList.remove('active');
+                });
+            }
+            if(makeOfferPopup) {
+                makeOfferPopup.addEventListener('click', function(event) {
+                    if(event.target === makeOfferPopup) {
+                        makeOfferPopup.classList.remove('active');
+                    }
+                });
+            }
+
+        }
+    </script>
+</body>
+</html>

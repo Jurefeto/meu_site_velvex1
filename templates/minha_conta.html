@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minha Conta - Velvex</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header class="site-header">
+        <div class="search-area">
+            <a href="#" id="openSearchPopup">Pesquisar</a>
+        </div>
+        <nav class="main-nav">
+            <a href="{{ url_for('home') }}">Início</a>
+            <a href="{{ url_for('loja_page') }}">Loja (Criar Anúncio)</a>
+            <a href="{{ url_for('anuncios_page') }}">Anuncios</a> 
+        </nav>
+        <div class="account-area">
+            {% if session.user_id %}
+                <a href="{{ url_for('minha_conta_page') }}">{{ session.user_nome }}</a>
+                {% if session.is_admin %}
+                    <a href="{{ url_for('admin_dashboard') }}" class="admin-link">Admin</a> 
+                {% endif %}
+                <a href="{{ url_for('logout') }}">Logout</a>
+            {% else %}
+                <a href="{{ url_for('login_page') }}">Minha Conta / Login</a>
+            {% endif %}
+        </div>
+    </header>
+
+    <main class="page-content-container minha-conta-layout">
+        <aside class="minha-conta-sidebar">
+            <h3>Minhas Opções</h3>
+            <ul class="minha-conta-nav">
+                <li><a href="{{ url_for('loja_page') }}" class="btn-sidebar btn-create-ad">Criar Novo Anúncio</a></li>
+                <li><button type="button" id="openEditProfilePopup" class="btn-sidebar btn-edit-profile">Editar Perfil</button></li>
+                <li><a href="{{ url_for('logout') }}" class="btn-sidebar btn-logout">Sair</a></li>
+            </ul>
+        </aside>
+
+        <section class="minha-conta-main-content">
+            <h2 class="section-title">Minha Conta</h2>
+            
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <ul class="flash-messages" style="max-width: 100%;">
+                    {% for category, message in messages %}
+                        <li class="flash-message flash-{{ category }}">{{ message }}</li>
+                    {% endfor %}
+                    </ul>
+                {% endif %}
+            {% endwith %}
+
+            {% if user %} {# 'user' é passado pela rota minha_conta_page #}
+                <p class="welcome-message">Olá, <strong>{{ user.nome }}</strong>! Bem-vindo(a) à sua área.</p>
+                
+                <section class="meus-anuncios-section">
+                    <h3 class="section-subtitle">Meus Anúncios</h3>
+                    {% if anuncios_usuario %}
+                        <div class="table-responsive">
+                            <table class="modern-table">
+                                <thead>
+                                    <tr>
+                                        <th>Imagem</th>
+                                        <th>Título</th>
+                                        <th>Preço</th>
+                                        <th>Status</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for anuncio in anuncios_usuario %}
+                                    {% set primeira_imagem = (anuncio.imagens_nomes.split(',')[0]).strip() if anuncio.imagens_nomes else None %}
+                                    <tr class="anuncio-row clickable-anuncio" 
+                                        data-id="{{ anuncio.id }}"
+                                        data-titulo="{{ anuncio.titulo }}"
+                                        data-descricao="{{ anuncio.descricao }}"
+                                        data-preco="{{ "%.2f"|format(anuncio.preco|float) }}"
+                                        data-categoria="{{ anuncio.categoria }}"
+                                        data-condicao="{{ anuncio.condicao }}"
+                                        data-imagens="{{ anuncio.imagens_nomes if anuncio.imagens_nomes else '' }}">
+                                        <td>
+                                            {% if primeira_imagem %}
+                                                <img src="{{ url_for('static', filename='uploads/anuncios/' + primeira_imagem) }}" alt="{{ anuncio.titulo }}" class="anuncio-thumbnail">
+                                            {% else %}
+                                                <span class="no-image-placeholder">Sem Imagem</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ anuncio.titulo }}</td>
+                                        <td>R$ {{ "%.2f"|format(anuncio.preco|float) }}</td>
+                                        <td>
+                                            {% if anuncio.status == 'pendente' %}
+                                                <span class="status-badge status-pending">Pendente</span>
+                                            {% elif anuncio.status == 'aprovado' %}
+                                                <span class="status-badge status-approved">Aprovado</span>
+                                            {% elif anuncio.status == 'rejeitado' %}
+                                                <span class="status-badge status-rejected">Rejeitado</span>
+                                            {% else %}
+                                                <span class="status-badge">{{ anuncio.status }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <button type="button" class="btn-action btn-view-manage">
+                                                Ver/Gerenciar
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="no-ads-message">Você ainda não criou nenhum anúncio.</p>
+                    {% endif %}
+                </section>
+
+                <section class="minhas-ofertas-section">
+                    <h3 class="section-subtitle">Ofertas Recebidas <small>(Pendentes)</small></h3>
+                    {% if ofertas_recebidas %}
+                        <div class="table-responsive">
+                            <table class="modern-table">
+                                <thead>
+                                    <tr>
+                                        <th>Anúncio</th>
+                                        <th>Oferta de R$</th>
+                                        <th>Comprador</th>
+                                        <th>Data</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for oferta in ofertas_recebidas %}
+                                    <tr>
+                                        <td><a href="#" class="view-anuncio-link" 
+                                            data-id="{{ oferta.anuncio.id }}"
+                                            data-titulo="{{ oferta.anuncio.titulo }}"
+                                            data-descricao="{{ oferta.anuncio.descricao }}"
+                                            data-preco="{{ "%.2f"|format(oferta.anuncio.preco|float) }}"
+                                            data-categoria="{{ oferta.anuncio.categoria }}"
+                                            data-condicao="{{ oferta.anuncio.condicao }}"
+                                            data-imagens="{{ oferta.anuncio.imagens_nomes if oferta.anuncio.imagens_nomes else '' }}"
+                                            data-seller-id="{{ oferta.anuncio.user_id }}">
+                                            {{ oferta.anuncio.titulo }}</a></td>
+                                        <td>R$ {{ "%.2f"|format(oferta.valor_oferta|float) }}</td>
+                                        <td>{{ oferta.comprador.nome }}</td>
+                                        <td>{{ oferta.data_oferta.strftime('%d/%m/%Y %H:%M') }}</td>
+                                        <td>
+                                            <form action="{{ url_for('aceitar_oferta_action', oferta_id=oferta.id) }}" method="POST" class="inline-form" onsubmit="return confirm('Tem certeza que deseja aceitar esta oferta? O preço do anúncio será atualizado.');">
+                                                <button type="submit" class="btn-action btn-approve">Aceitar</button>
+                                            </form>
+                                            <form action="{{ url_for('rejeitar_oferta_action', oferta_id=oferta.id) }}" method="POST" class="inline-form" onsubmit="return confirm('Tem certeza que deseja rejeitar esta oferta?');">
+                                                <button type="submit" class="btn-action btn-reject">Rejeitar</button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="no-ads-message">Nenhuma oferta pendente recebida para seus anúncios.</p>
+                    {% endif %}
+                </section>
+
+                <section class="minhas-ofertas-section">
+                    <h3 class="section-subtitle">Minhas Ofertas Feitas <small>(Pendentes)</small></h3>
+                    {% if ofertas_feitas %}
+                        <div class="table-responsive">
+                            <table class="modern-table">
+                                <thead>
+                                    <tr>
+                                        <th>Anúncio</th>
+                                        <th>Sua Oferta R$</th>
+                                        <th>Status</th> 
+                                        <th>Data</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for oferta in ofertas_feitas %}
+                                    <tr>
+                                        <td><a href="#" class="view-anuncio-link"
+                                            data-id="{{ oferta.anuncio.id }}"
+                                            data-titulo="{{ oferta.anuncio.titulo }}"
+                                            data-descricao="{{ oferta.anuncio.descricao }}"
+                                            data-preco="{{ "%.2f"|format(oferta.anuncio.preco|float) }}"
+                                            data-categoria="{{ oferta.anuncio.categoria }}"
+                                            data-condicao="{{ oferta.anuncio.condicao }}"
+                                            data-imagens="{{ oferta.anuncio.imagens_nomes if oferta.anuncio.imagens_nomes else '' }}"
+                                            data-seller-id="{{ oferta.anuncio.user_id }}">
+                                            {{ oferta.anuncio.titulo }}</a></td>
+                                        <td>R$ {{ "%.2f"|format(oferta.valor_oferta|float) }}</td>
+                                        <td>
+                                            {% if oferta.status == 'pendente' %}
+                                                <span class="status-badge status-pending">Pendente</span>
+                                            {% elif oferta.status == 'aceita' %}
+                                                <span class="status-badge status-approved">Aceita</span>
+                                            {% elif oferta.status == 'rejeitada' %}
+                                                <span class="status-badge status-rejected">Rejeitada</span>
+                                            {% elif oferta.status == 'cancelada' %}
+                                                <span class="status-badge status-info-neutral">Cancelada</span>
+                                            {% else %}
+                                                <span class="status-badge">{{ oferta.status }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ oferta.data_oferta.strftime('%d/%m/%Y %H:%M') }}</td>
+                                        <td>
+                                            {% if oferta.status == 'pendente' %}
+                                                <form action="{{ url_for('cancelar_oferta_action', oferta_id=oferta.id) }}" method="POST" class="inline-form" onsubmit="return confirm('Tem certeza que deseja cancelar esta oferta?');">
+                                                    <button type="submit" class="btn-action btn-cancel-offer">Cancelar</button>
+                                                </form>
+                                            {% else %}
+                                                —
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="no-ads-message">Você ainda não fez nenhuma oferta pendente.</p>
+                    {% endif %}
+                </section>
+
+
+            {% else %}
+                 <p>Por favor, <a href="{{ url_for('login_page') }}">faça login</a> para acessar sua conta.</p>
+            {% endif %}
+        </section>
+    </main>
+
+    {# Pop-ups (Search e AnuncioDetalhe) permanecem os mesmos, mas o JS do AnuncioDetalhe precisa ser ajustado para funcionar para o link de "Ver Anúncio" das ofertas #}
+    <div id="searchPopup" class="search-popup-overlay">
+        <div class="search-popup-content">
+            <span class="close-popup" id="closeSearchPopup">&times;</span>
+            <h2>Pesquisar no Site</h2>
+            <form action="{{ url_for('search_results_page') }}" method="get" class="popup-search-form">
+                <input type="search" name="query_popup" placeholder="O que você procura?" aria-label="Campo de busca popup">
+                <button type="submit" class="btn-principal">Buscar</button>
+            </form>
+            <p class="popup-info-text">(Busca nos anúncios do site.)</p>
+        </div>
+    </div>
+
+    <div id="anuncioDetalhePopup" class="anuncio-popup-overlay">
+        <div class="anuncio-popup-content">
+            <span class="close-anuncio-popup" id="closeAnuncioDetalhePopup">&times;</span>
+            <div class="anuncio-popup-gallery-column">
+                <div class="image-nav-wrapper">
+                    <button class="popup-gallery-nav prev" id="prevImagePopup">&lt;</button>
+                    <div class="anuncio-popup-imagem-principal-container">
+                        <img id="popupAnuncioImgPrincipal" src="" alt="Imagem Principal do Anúncio" class="anuncio-popup-imagem-principal">
+                    </div>
+                    <button class="popup-gallery-nav next" id="nextImagePopup">&gt;</button>
+                </div>
+                <div id="popupAnuncioThumbnails" class="anuncio-popup-thumbnails"></div>
+            </div>
+            <div class="anuncio-popup-info">
+                <h2 id="popupAnuncioTitulo"></h2>
+                <p class="popup-anuncio-preco"><strong>Preço:</strong> R$ <span id="popupAnuncioPreco"></span></p>
+                <p><strong>Categoria:</strong> <span id="popupAnuncioCategoria"></span></p>
+                <p><strong>Condição:</strong> <span id="popupAnuncioCondicao"></span></p>
+                <p id="popupAnuncioDescricao" class="popup-anuncio-descricao-completa"></p>
+                <div class="anuncio-popup-acoes">
+                    <a href="#" id="btnEditarAnuncioPopup" class="btn-action btn-edit-popup">Editar Anúncio</a>
+                    <form id="formDeletarAnuncioPopup" action="" method="POST" class="inline-form" onsubmit="return confirm('Tem certeza que deseja deletar este anúncio? Esta ação é irreversível.');">
+                        <button type="submit" class="btn-action btn-delete-popup">Deletar Anúncio</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="editProfilePopup" class="search-popup-overlay"> 
+        <div class="search-popup-content profile-edit-popup-content"> 
+            <span class="close-popup" id="closeEditProfilePopup">&times;</span>
+            <h2>Editar Perfil</h2>
+            {% if user %} 
+            <form action="{{ url_for('minha_conta_page') }}" method="post" class="user-form" id="profileEditForm"> {# Ação agora vai para minha_conta_page #}
+                {# CSRF Token pode ser adicionado manualmente se necessário, se não estiver usando Flask-WTF #}
+                <div class="form-group">
+                    <label for="perfil_nome">Nome:</label>
+                    <input type="text" id="perfil_nome" name="perfil_nome" value="{{ user.nome }}" required>
+                </div>
+                <div class="form-group">
+                    <label for="perfil_email">Email (não editável):</label>
+                    <input type="email" id="perfil_email" name="perfil_email" value="{{ user.email }}" readonly disabled class="input-disabled">
+                </div>
+                <div class="form-group">
+                    <label for="perfil_cpf">CPF (não editável):</label>
+                    <input type="text" id="perfil_cpf" name="perfil_cpf" value="{{ user.cpf }}" readonly disabled class="input-disabled">
+                </div>
+                <div class="form-group">
+                    <label for="perfil_endereco">Endereço:</label>
+                    <input type="text" id="perfil_endereco" name="perfil_endereco" value="{{ user.endereco }}" required>
+                </div>
+                <hr class="separator-line">
+                <p class="small-text-info">Para alterar a senha, preencha os campos abaixo. Caso contrário, deixe-os em branco.</p>
+                <div class="form-group">
+                    <label for="perfil_senha_atual">Senha Atual:</label>
+                    <input type="password" id="perfil_senha_atual" name="perfil_senha_atual" placeholder="Sua senha atual">
+                </div>
+                <div class="form-group">
+                    <label for="perfil_nova_senha">Nova Senha:</label>
+                    <input type="password" id="perfil_nova_senha" name="perfil_nova_senha" placeholder="Mínimo 6 caracteres">
+                </div>
+                <div class="form-group">
+                    <label for="perfil_confirmar_nova_senha">Confirmar Nova Senha:</label>
+                    <input type="password" id="perfil_confirmar_nova_senha" name="perfil_confirmar_nova_senha">
+                </div>
+                <button type="submit" class="btn-principal">Salvar Alterações</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
+
+    <script>
+        // Script do Pop-up de Busca (como nas outras páginas)
+        const openSearchButton = document.getElementById('openSearchPopup');
+        const closeSearchButton = document.getElementById('closeSearchPopup');
+        const searchPopupOverlay = document.getElementById('searchPopup');
+        if(openSearchButton && searchPopupOverlay){openSearchButton.addEventListener('click', function(event){event.preventDefault();searchPopupOverlay.classList.add('active');});}
+        if(closeSearchButton && searchPopupOverlay){closeSearchButton.addEventListener('click', function(){searchPopupOverlay.classList.remove('active');});}
+        if(searchPopupOverlay){searchPopupOverlay.addEventListener('click', function(event){if(event.target === searchPopupOverlay){searchPopupOverlay.classList.remove('active');}});}
+
+        // Script para o Pop-up de Detalhes/Gerenciar Anúncio
+        const btnsVerMeuAnuncio = document.querySelectorAll('.btn-view-manage'); // Botões na tabela "Meus Anúncios"
+        const viewAnuncioLinks = document.querySelectorAll('.view-anuncio-link'); // Links na tabela "Ofertas Recebidas/Feitas"
+
+        const anuncioDetalhePopup = document.getElementById('anuncioDetalhePopup');
+        const closeAnuncioDetalheButton = document.getElementById('closeAnuncioDetalhePopup');
+        let currentAnuncioId = null; 
+        let currentPopupImages = [];
+        let currentImageIndex = 0;
+
+        if ((btnsVerMeuAnuncio.length > 0 || viewAnuncioLinks.length > 0) && anuncioDetalhePopup) {
+            const popupAnuncioImgPrincipal = document.getElementById('popupAnuncioImgPrincipal');
+            const popupAnuncioThumbnails = document.getElementById('popupAnuncioThumbnails');
+            const popupAnuncioTitulo = document.getElementById('popupAnuncioTitulo');
+            const popupAnuncioDescricao = document.getElementById('popupAnuncioDescricao');
+            const popupAnuncioPreco = document.getElementById('popupAnuncioPreco');
+            const popupAnuncioCategoria = document.getElementById('popupAnuncioCategoria');
+            const popupAnuncioCondicao = document.getElementById('popupAnuncioCondicao');
+            const formDeletarAnuncioPopup = document.getElementById('formDeletarAnuncioPopup');
+            const btnEditarAnuncioPopup = document.getElementById('btnEditarAnuncioPopup');
+            const prevImageButton = document.getElementById('prevImagePopup'); 
+            const nextImageButton = document.getElementById('nextImagePopup'); 
+
+            function displayPopupAnuncioCurrentImage() { 
+                if (popupAnuncioImgPrincipal && currentPopupImages.length > 0) {
+                    popupAnuncioImgPrincipal.src = "{{ url_for('static', filename='uploads/anuncios/') }}" + currentPopupImages[currentImageIndex];
+                    popupAnuncioImgPrincipal.alt = popupAnuncioTitulo.textContent || "Imagem Principal";
+                    popupAnuncioImgPrincipal.style.display = 'block';
+                } else if (popupAnuncioImgPrincipal) {
+                    popupAnuncioImgPrincipal.src = ""; popupAnuncioImgPrincipal.alt = "Sem imagem";
+                    popupAnuncioImgPrincipal.style.display = 'none';
+                }
+                if (popupAnuncioThumbnails) { // Adicionado para segurança
+                    const thumbnails = popupAnuncioThumbnails.querySelectorAll('.anuncio-popup-thumbnail-item');
+                    thumbnails.forEach((thumb, index) => { thumb.classList.toggle('active-thumbnail', index === currentImageIndex);});
+                }
+                if(prevImageButton) prevImageButton.disabled = currentImageIndex === 0;
+                if(nextImageButton) nextImageButton.disabled = currentImageIndex >= currentPopupImages.length - 1;
+            }
+            
+            // Função para abrir o pop-up com os dados do anúncio
+            function openAnuncioPopup(dataset) {
+                currentAnuncioId = dataset.id;
+                
+                if (popupAnuncioTitulo) popupAnuncioTitulo.textContent = dataset.titulo || "N/A";
+                if (popupAnuncioDescricao) popupAnuncioDescricao.textContent = dataset.descricao || "N/A";
+                if (popupAnuncioPreco) popupAnuncioPreco.textContent = dataset.preco || "0.00";
+                if (popupAnuncioCategoria) popupAnuncioCategoria.textContent = (dataset.categoria || "N/A").replace(/_/g,' ').capitalize();
+                if (popupAnuncioCondicao) popupAnuncioCondicao.textContent = (dataset.condicao || "N/A").replace(/_/g,' ').capitalize();
+                
+                const imagensNomesStr = dataset.imagens;
+                currentPopupImages = []; 
+                if (popupAnuncioThumbnails) popupAnuncioThumbnails.innerHTML = ''; 
+
+                if (imagensNomesStr) {
+                    currentPopupImages = imagensNomesStr.split(',').map(s => s.trim()).filter(s => s);
+                }
+                currentImageIndex = 0; 
+                displayPopupAnuncioCurrentImage(); 
+
+                if (popupAnuncioThumbnails && currentPopupImages.length > 0) {
+                    currentPopupImages.forEach((imgNome, index) => {
+                        const thumb = document.createElement('img');
+                        thumb.src = "{{ url_for('static', filename='uploads/anuncios/') }}" + imgNome;
+                        thumb.alt = "Miniatura " + (index + 1);
+                        thumb.classList.add('anuncio-popup-thumbnail-item');
+                        thumb.dataset.index = index; 
+                        thumb.addEventListener('click', function() {
+                            currentImageIndex = parseInt(this.dataset.index);
+                            displayPopupAnuncioCurrentImage(); 
+                        });
+                        popupAnuncioThumbnails.appendChild(thumb);
+                    });
+                     const thumbnails = popupAnuncioThumbnails.querySelectorAll('.anuncio-popup-thumbnail-item');
+                     if (thumbnails.length > currentImageIndex) thumbnails[currentImageIndex].classList.add('active-thumbnail');
+                }
+                
+                if (formDeletarAnuncioPopup && currentAnuncioId) {
+                    formDeletarAnuncioPopup.action = `/anuncio/${currentAnuncioId}/deletar`;
+                }
+                if (btnEditarAnuncioPopup && currentAnuncioId) {
+                     btnEditarAnuncioPopup.href = `/anuncio/${currentAnuncioId}/editar`; 
+                }
+                anuncioDetalhePopup.classList.add('active');
+            }
+
+
+            // Adicionar evento para botões "Ver/Gerenciar" (Meus Anúncios)
+            btnsVerMeuAnuncio.forEach(button => {
+                button.addEventListener('click', function() {
+                    const anuncioRow = this.closest('.anuncio-row'); 
+                    openAnuncioPopup(anuncioRow.dataset);
+                });
+            });
+
+            // Adicionar evento para links de "Ver Anúncio" (Ofertas Recebidas/Feitas)
+            viewAnuncioLinks.forEach(link => {
+                link.addEventListener('click', function(event) {
+                    event.preventDefault(); // Impede o link de navegar
+                    openAnuncioPopup(this.dataset);
+                });
+            });
+
+
+            if (prevImageButton) {prevImageButton.addEventListener('click', function() {if (currentImageIndex > 0) {currentImageIndex--;displayPopupAnuncioCurrentImage();}});}
+            if (nextImageButton) {nextImageButton.addEventListener('click', function() {if (currentImageIndex < currentPopupImages.length - 1) {currentImageIndex++;displayCurrentImageInPopup();}});}
+            if (closeAnuncioDetalheButton) {closeAnuncioDetalheButton.addEventListener('click', function() {anuncioDetalhePopup.classList.remove('active'); });}
+            if (anuncioDetalhePopup) { anuncioDetalhePopup.addEventListener('click', function(event) { if (event.target === anuncioDetalhePopup) { anuncioDetalhePopup.classList.remove('active'); } });}
+        }
+
+        // Script para o Pop-up de Editar Perfil
+        const openEditProfileButton = document.getElementById('openEditProfilePopup');
+        const editProfilePopup = document.getElementById('editProfilePopup');
+        const closeEditProfileButton = document.getElementById('closeEditProfilePopup');
+
+        if (openEditProfileButton && editProfilePopup) {
+            const perfilSenhaAtualInput = document.getElementById('perfil_senha_atual');
+            const perfilNovaSenhaInput = document.getElementById('perfil_nova_senha');
+            const perfilConfirmarNovaSenhaInput = document.getElementById('perfil_confirmar_nova_senha');
+
+            openEditProfileButton.addEventListener('click', function(event) {
+                event.preventDefault();
+                // Os valores de {{ user.campo }} já são preenchidos pelo Jinja.
+                // Limpar campos de senha ao abrir:
+                if(perfilSenhaAtualInput) perfilSenhaAtualInput.value = '';
+                if(perfilNovaSenhaInput) perfilNovaSenhaInput.value = '';
+                if(perfilConfirmarNovaSenhaInput) perfilConfirmarNovaSenhaInput.value = '';
+                editProfilePopup.classList.add('active');
+            });
+        }
+        if (closeEditProfileButton && editProfilePopup) {
+            closeEditProfileButton.addEventListener('click', function() {
+                editProfilePopup.classList.remove('active');
+            });
+        }
+        if (editProfilePopup) {
+            editProfilePopup.addEventListener('click', function(event) {
+                if (event.target === editProfilePopup) { 
+                    editProfilePopup.classList.remove('active');
+                }
+            });
+        }
+        String.prototype.capitalize = function() { // Helper para o JS se não estiver global
+            return this.replace(/\b\w/g, char => char.toUpperCase()).replace(/_/g, ' ');
+        }
+    </script>
+</body>
+</html>

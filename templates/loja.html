@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Criar Anúncio - Velvex</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header class="site-header">
+        <div class="search-area">
+            <a href="#" id="openSearchPopup">Pesquisar</a>
+        </div>
+        <nav class="main-nav">
+            <a href="{{ url_for('home') }}">Início</a>
+            <a href="{{ url_for('loja_page') }}">Loja (Criar Anúncio)</a>
+            <a href="{{ url_for('anuncios_page') }}">Anuncios</a> 
+        </nav>
+        <div class="account-area">
+            {% if session.user_id %}
+                <a href="{{ url_for('minha_conta_page') }}">{{ session.user_nome }}</a>
+                {% if session.is_admin %}
+                    <a href="{{ url_for('admin_dashboard') }}" class="admin-link">Admin</a> 
+                {% endif %}
+                <a href="{{ url_for('logout') }}">Logout</a>
+            {% else %}
+                <a href="{{ url_for('login_page') }}">Minha Conta / Login</a>
+            {% endif %}
+        </div>
+    </header>
+
+    <main class="page-content-container loja-page">
+        {# Seção de vídeo de fundo para a página Loja #}
+        <div class="loja-header-video-section">
+            <video autoplay muted loop class="loja-background-video">
+                <source src="{{ url_for('static', filename='videos/bb.mp4') }}" type="video/mp4">
+                Seu navegador não suporta a tag de vídeo.
+            </video>
+            <div class="loja-header-content-overlay"> {# Overlay para o conteúdo sobre o vídeo #}
+                <h2>Crie seu Anúncio</h2>
+                <p>Preencha os detalhes do produto que deseja vender. Seu anúncio será revisado antes de ser publicado.</p>
+            </div>
+        </div>
+        <hr class="separator-line">
+
+
+        <section class="criar-anuncio-container">
+            <div class="anuncio-form-wrapper form-container">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        <ul class="flash-messages flash-messages_loja">
+                        {% for category, message in messages %}
+                            <li class="flash-message flash-{{ category }}">{{ message }}</li>
+                        {% endfor %}
+                        </ul>
+                    {% endif %}
+                {% endwith %}
+                
+                {# CORREÇÃO AQUI: action aponta para 'loja_page' #}
+                <form action="{{ url_for('loja_page') }}" method="post" class="user-form" id="formCriarAnuncio" enctype="multipart/form-data">
+                    {# CSRF Token pode ser adicionado manualmente se necessário #}
+                    <div class="form-group">
+                        <label for="anuncio_titulo">Título do Anúncio:</label>
+                        <input type="text" id="anuncio_titulo" name="anuncio_titulo" placeholder="Ex: Tênis Nike Air Max, Tamanho 40, Novo" value="{{ anuncio_titulo if anuncio_titulo is defined else '' }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="anuncio_descricao">Descrição Detalhada:</label>
+                        <textarea id="anuncio_descricao" name="anuncio_descricao" rows="5" placeholder="Descreva seu produto, condição, detalhes importantes..." required>{{ anuncio_descricao if anuncio_descricao is defined else '' }}</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="anuncio_categoria">Categoria:</label>
+                        <select id="anuncio_categoria" name="anuncio_categoria" required>
+                            <option value="" disabled selected>Selecione uma categoria</option>
+                            {% for cat in categorias_form %}
+                            <option value="{{ cat.value }}" {% if anuncio_categoria is defined and anuncio_categoria == cat.value %}selected{% endif %}>{{ cat.label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="anuncio_preco">Preço (R$):</label>
+                        <input type="number" id="anuncio_preco" name="anuncio_preco" placeholder="Ex: 299.90" step="0.01" min="0" value="{{ anuncio_preco if anuncio_preco is defined else '' }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="anuncio_condicao">Condição do Produto:</label>
+                        <select id="anuncio_condicao" name="anuncio_condicao" required>
+                            <option value="" disabled selected>Selecione a condição</option>
+                            {% for cond in condicoes_form %}
+                            <option value="{{ cond.value }}" {% if anuncio_condicao is defined and anuncio_condicao == cond.value %}selected{% endif %}>{{ cond.label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="anuncio_imagens">Imagens do Produto (selecione uma ou mais):</label>
+                        <input type="file" id="anuncio_imagens" name="anuncio_imagens" accept="image/png, image/jpeg, image/webp" multiple>
+                        <small>Selecione uma ou mais imagens (JPG, PNG, JPEG, WEBP). Tamanho máx: 5MB por imagem.</small>
+                    </div>
+                    
+                    <button type="submit" class="btn-principal">Publicar Anúncio</button>
+                </form>
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer-nav">
+        <nav>
+            <a href="{{ url_for('quem_somos_page') }}">Quem Somos</a>
+            <a href="{{ url_for('compre_page') }}">Como Comprar</a>
+            <a href="{{ url_for('venda_page') }}">Como Vender</a>
+            <a href="{{ url_for('suporte_page') }}">Suporte</a>
+            <a href="{{ url_for('termos_page') }}">Termos de Serviço</a>
+        </nav>
+    </footer>
+
+    {# Pop-ups (Search) #}
+    <div id="searchPopup" class="search-popup-overlay">
+        <div class="search-popup-content">
+            <span class="close-popup" id="closeSearchPopup">&times;</span>
+            <h2>Pesquisar no Site</h2>
+            <form action="{{ url_for('search_results_page') }}" method="get" class="popup-search-form">
+                <input type="search" name="query_popup" placeholder="O que você procura?" aria-label="Campo de busca popup">
+                <button type="submit" class="btn-principal">Buscar</button>
+            </form>
+            <p class="popup-info-text">(Busca nos anúncios do site.)</p>
+        </div>
+    </div>
+
+    <script>
+        // Script do Pop-up de Busca (como nas outras páginas)
+        const openSearchButton = document.getElementById('openSearchPopup');
+        const closeSearchButton = document.getElementById('closeSearchPopup');
+        const searchPopupOverlay = document.getElementById('searchPopup');
+        if(openSearchButton && searchPopupOverlay){openSearchButton.addEventListener('click', function(event){event.preventDefault();searchPopupOverlay.classList.add('active');});}
+        if(closeSearchButton && searchPopupOverlay){closeSearchButton.addEventListener('click', function(){searchPopupOverlay.classList.remove('active');});}
+        if(searchPopupOverlay){searchPopupOverlay.addEventListener('click', function(event){if(event.target === searchPopupOverlay){searchPopupOverlay.classList.remove('active');}});}
+    </script>
+</body>
+</html>

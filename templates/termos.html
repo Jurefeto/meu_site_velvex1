@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Suporte - Velvex</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header class="site-header">
+        <div class="search-area">
+            <a href="#" id="openSearchPopup">Pesquisar</a>
+        </div>
+        <nav class="main-nav">
+            <a href="{{ url_for('home') }}">Início</a>
+            <a href="{{ url_for('loja_page') }}">Loja (Criar Anúncio)</a>
+            <a href="{{ url_for('anuncios_page') }}">Anuncios</a> 
+        </nav>
+        <div class="account-area">
+            {% if session.user_id %}
+                <a href="{{ url_for('minha_conta_page') }}">{{ session.user_nome }}</a>
+                {% if session.is_admin %}
+                    <a href="{{ url_for('admin_dashboard') }}" style="color: #ffc107;">Admin</a> 
+                {% endif %}
+                <a href="{{ url_for('logout') }}">Logout</a>
+            {% else %}
+                <a href="{{ url_for('login_page') }}">Minha Conta / Login</a>
+            {% endif %}
+        </div>
+    </header>
+
+    <div class="info-page-container">
+        <aside class="info-sidebar">
+            <nav class="info-nav">
+                <ul>
+                    <li><a href="{{ url_for('quem_somos_page') }}">Quem Somos</a></li>
+                    <li><a href="{{ url_for('compre_page') }}">Compre na Velvex</a></li>
+                    <li><a href="{{ url_for('venda_page') }}">Venda na Velvex</a></li>
+                    <li><a href="{{ url_for('suporte_page') }}" class="active">Suporte</a></li>
+                    <li><a href="{{ url_for('termos_page') }}">Termo de Responsabilidade</a></li>
+                </ul>
+            </nav>
+        </aside>
+        <main class="info-content">
+            <h1>Suporte</h1>
+            <p>Entre em contato conosco pelos seguintes canais:</p>
+            <p><strong>Instagram:</strong> <a href="https://www.instagram.com/Velvex" target="_blank" rel="noopener noreferrer">@Velvex</a> (Por favor, substitua pelo link real do seu Instagram)</p>
+            <p><strong>Email:</strong> <a href="mailto:rfliberatto@gmail.com">rfliberatto@gmail.com</a></p>
+        </main>
+    </div>
+
+    <div id="searchPopup" class="search-popup-overlay">
+        <div class="search-popup-content">
+            <span class="close-popup" id="closeSearchPopup">&times;</span>
+            <h2>Pesquisar no Site</h2>
+            <form action="{{ url_for('search_results_page') }}" method="get" class="popup-search-form">
+                <input type="search" name="query_popup" placeholder="O que você procura?" aria-label="Campo de busca popup">
+                <button type="submit" class="btn-principal">Buscar</button>
+            </form>
+            <p style="font-size: 0.8em; color: #ccc; margin-top:15px;">(Busca nos anúncios do site.)</p>
+        </div>
+    </div>
+    <script>
+        const openSearchButton = document.getElementById('openSearchPopup');
+        const closeSearchButton = document.getElementById('closeSearchPopup');
+        const searchPopupOverlay = document.getElementById('searchPopup');
+        if(openSearchButton && searchPopupOverlay){openSearchButton.addEventListener('click', function(event){event.preventDefault();searchPopupOverlay.classList.add('active');});}
+        if(closeSearchButton && searchPopupOverlay){closeSearchButton.addEventListener('click', function(){searchPopupOverlay.classList.remove('active');});}
+        if(searchPopupOverlay){searchPopupOverlay.addEventListener('click', function(event){if(event.target === searchPopupOverlay){searchPopupOverlay.classList.remove('active');}});}
+    </script>
+</body>
+</html>

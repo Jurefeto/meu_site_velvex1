@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciar Usuários - Admin Velvex</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header class="site-header">
+        <div class="search-area">
+            <a href="#" id="openSearchPopup">Pesquisar</a>
+        </div>
+        <nav class="main-nav">
+            <a href="{{ url_for('home') }}">Início</a>
+            <a href="{{ url_for('loja_page') }}">Loja (Criar Anúncio)</a>
+            <a href="{{ url_for('anuncios_page') }}">Anuncios</a> 
+        </nav>
+        <div class="account-area">
+            {% if session.user_id %}
+                <a href="{{ url_for('minha_conta_page') }}">{{ session.user_nome }}</a>
+                {% if session.is_admin %}
+                    <a href="{{ url_for('admin_dashboard') }}" style="color: #ffc107;">Admin</a> 
+                {% endif %}
+                <a href="{{ url_for('logout') }}">Logout</a>
+            {% else %}
+                <a href="{{ url_for('login_page') }}">Minha Conta / Login</a>
+            {% endif %}
+        </div>
+    </header>
+
+    <main class="page-content-container admin-page">
+        <div class="admin-panel admin-list-anuncios">
+            <h1>Gerenciamento de Usuários</h1>
+            
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <ul class="flash-messages flash-messages_admin">
+                    {% for category, message in messages %}
+                        <li class="flash-message flash-{{ category }}">{{ message }}</li>
+                    {% endfor %}
+                    </ul>
+                {% endif %}
+            {% endwith %}
+
+            {% if usuarios %}
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nome</th>
+                            <th>Email</th>
+                            <th>CPF</th>
+                            <th>Admin?</th>
+                            <th>Banido?</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for usuario_item in usuarios %}
+                        <tr>
+                            <td>{{ usuario_item.id }}</td>
+                            <td>{{ usuario_item.nome }}</td>
+                            <td>{{ usuario_item.email }}</td>
+                            <td>{{ usuario_item.cpf }}</td>
+                            <td>
+                                {% if usuario_item.is_admin %}
+                                    <span style="color: #28a745; font-weight: bold;">Sim</span>
+                                {% else %}
+                                    Não
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if usuario_item.is_banned %}
+                                    <span style="color: #dc3545; font-weight: bold;">Sim</span>
+                                {% else %}
+                                    Não
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div style="display: flex; flex-wrap: wrap; gap: 5px;">
+                                    <form action="{{ url_for('admin_toggle_admin_status', user_id=usuario_item.id) }}" method="post" style="display: inline;">
+                                        <button type="submit" class="btn-admin" 
+                                                style="background-color: {{ '#ffc107' if not usuario_item.is_admin else '#6c757d' }}; color: {{ '#000' if not usuario_item.is_admin else '#fff' }};"
+                                                title="{{ 'Promover a Admin' if not usuario_item.is_admin else 'Rebaixar de Admin' }}"
+                                                {% if usuario_item.id == session.get('user_id') and usuario_item.is_admin and num_admins <= 1 %}disabled title="Não é possível remover o status do único administrador."{% endif %}>
+                                            {{ 'Tornar Admin' if not usuario_item.is_admin else 'Remover Admin' }}
+                                        </button>
+                                    </form>
+
+                                    <form action="{{ url_for('admin_toggle_ban_status', user_id=usuario_item.id) }}" method="post" style="display: inline;">
+                                        <button type="submit" class="btn-admin" 
+                                                style="background-color: {{ '#f0ad4e' if not usuario_item.is_banned else '#5cb85c' }};"
+                                                title="{{ 'Banir Usuário' if not usuario_item.is_banned else 'Desbanir Usuário' }}"
+                                                {% if usuario_item.id == session.get('user_id') %}disabled title="Você não pode banir a si mesmo."{% endif %}>
+                                            {{ 'Banir' if not usuario_item.is_banned else 'Desbanir' }}
+                                        </button>
+                                    </form>
+
+                                    <form action="{{ url_for('admin_delete_user', user_id=usuario_item.id) }}" method="post" style="display: inline;" 
+                                          onsubmit="return confirm('Tem certeza que deseja deletar este usuário e todos os seus anúncios? Esta ação é irreversível.');">
+                                        <button type="submit" class="btn-admin btn-reject"
+                                                {% if usuario_item.id == session.get('user_id') %}disabled title="Você não pode deletar sua própria conta."{% endif %}>
+                                            Deletar
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p>Nenhum usuário encontrado.</p>
+            {% endif %}
+            <div style="margin-top: 30px; text-align:center;">
+                <a href="{{ url_for('admin_dashboard') }}" class="btn-principal" style="width: auto; display: inline-block; background-color: #6c757d;">&laquo; Voltar ao Painel Admin</a>
+            </div>
+        </div>
+    </main>
+
+    <div id="searchPopup" class="search-popup-overlay">
+        <div class="search-popup-content">
+            <span class="close-popup" id="closeSearchPopup">&times;</span>
+            <h2>Pesquisar no Site</h2>
+            <form action="{{ url_for('search_results_page') }}" method="get" class="popup-search-form">
+                <input type="search" name="query_popup" placeholder="O que você procura?" aria-label="Campo de busca popup">
+                <button type="submit" class="btn-principal">Buscar</button>
+            </form>
+            <p style="font-size: 0.8em; color: #ccc; margin-top:15px;">(Busca nos anúncios do site.)</p>
+        </div>
+    </div>
+    <script>
+        const openSearchButton = document.getElementById('openSearchPopup');
+        const closeSearchButton = document.getElementById('closeSearchPopup');
+        const searchPopupOverlay = document.getElementById('searchPopup');
+        if(openSearchButton && searchPopupOverlay){openSearchButton.addEventListener('click', function(event){event.preventDefault();searchPopupOverlay.classList.add('active');});}
+        if(closeSearchButton && searchPopupOverlay){closeSearchButton.addEventListener('click', function(){searchPopupOverlay.classList.remove('active');});}
+        if(searchPopupOverlay){searchPopupOverlay.addEventListener('click', function(event){if(event.target === searchPopupOverlay){searchPopupOverlay.classList.remove('active');}});}
+    </script>
+</body>
+</html>
