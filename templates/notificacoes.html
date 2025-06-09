@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Minhas Notificações - Velvex{% endblock %}
+
+{% block head_content %}
+    <style>
+        .notification-item {
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        .notification-item:hover {
+            background-color: #f0f2f5;
+        }
+        .chat-warning { /* Esta classe pode não ser necessária aqui se for só no chat.html */
+            border-left: 5px solid #ffc107;
+            padding: 10px 15px;
+            background-color: #fff3cd;
+            color: #856404;
+            margin-bottom: 1.5rem;
+            border-radius: 0.25rem;
+            font-weight: bold;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2>Minhas Notificações</h2>
+
+    {% if notificacoes_nao_lidas %}
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            Notificações Não Lidas ({{ notificacoes_nao_lidas|length }})
+            <div class="d-flex">
+                {# NOVO: Botão para Meus Chats #}
+                <a href="{{ url_for('meus_chats_page') }}" class="btn btn-sm btn-info text-white me-2">
+                    <i class="fas fa-comments me-1"></i> Meus Chats
+                </a>
+                <form action="{{ url_for('marcar_todas_notificacoes_lidas') }}" method="POST" class="d-inline">
+                    <button type="submit" class="btn btn-sm btn-light">Marcar Todas como Lidas</button>
+                </form>
+            </div>
+        </div>
+        <ul class="list-group list-group-flush">
+            {% for notif in notificacoes_nao_lidas %}
+            <li class="list-group-item d-flex justify-content-between align-items-center notification-item"
+                onclick="document.getElementById('form_notif_{{ notif.id }}').submit();">
+                <div>
+                    <strong>{{ notif.message }}</strong>
+                    <small class="text-muted d-block">{{ notif.timestamp | format_datetime }}</small>
+                </div>
+                <form id="form_notif_{{ notif.id }}" action="{{ url_for('abrir_notificacao_action', notification_id=notif.id) }}" method="POST" class="d-none"></form>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% else %}
+    <div class="alert alert-info" role="alert">
+        Você não tem notificações não lidas.
+        <br>
+        <a href="{{ url_for('meus_chats_page') }}" class="btn btn-info text-white mt-2">
+            <i class="fas fa-comments me-1"></i> Ver Meus Chats
+        </a>
+    </div>
+    {% endif %}
+
+    {% if notificacoes_lidas %}
+    <div class="card shadow-sm">
+        <div class="card-header bg-light">
+            Notificações Lidas Recentes
+        </div>
+        <ul class="list-group list-group-flush">
+            {% for notif in notificacoes_lidas %}
+            <li class="list-group-item text-muted">
+                {{ notif.message }}
+                <small class="d-block">{{ notif.timestamp | format_datetime }}</small>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    {% if not notificacoes_nao_lidas and not notificacoes_lidas %}
+    <div class="alert alert-secondary" role="alert">
+        Você não possui notificações.
+        <br>
+        <a href="{{ url_for('meus_chats_page') }}" class="btn btn-info text-white mt-2">
+            <i class="fas fa-comments me-1"></i> Ver Meus Chats
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

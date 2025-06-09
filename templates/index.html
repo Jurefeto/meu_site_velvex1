@@ -1,105 +1,143 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Minha Loja</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
-    <header class="site-header">
-        <div class="search-area">
-            <a href="#" id="openSearchPopup">Pesquisar</a>
-        </div>
-        <nav class="main-nav">
-            <a href="{{ url_for('home') }}">Início</a> 
-            <a href="{{ url_for('loja_page') }}">Loja (Criar Anúncio)</a>   
-            <a href="{{ url_for('anuncios_page') }}">Anuncios</a> 
-        </nav>
-        <div class="account-area">
-            {% if session.user_id %}
-                <a href="{{ url_for('minha_conta_page') }}">{{ session.user_nome }}</a>
-                {% if session.is_admin %}
-                    <a href="{{ url_for('admin_dashboard') }}" style="color: #ffc107;">Admin</a> 
-                {% endif %}
-                <a href="{{ url_for('logout') }}">Logout</a>
-            {% else %}
-                <a href="{{ url_for('login_page') }}">Minha Conta / Login</a>
-            {% endif %}
-        </div>
-    </header>
+{% extends "base.html" %}
 
-    <main class="hero-section">
-        <video autoplay muted loop playsinline class="hero-background-video">
-            <source src="{{ url_for('static', filename='videos/aa.mp4') }}" type="video/mp4">
-            Seu navegador não suporta a tag de vídeo.
-        </video>
-        <div class="hero-content"> 
-            <div class="promo-text-left">
-                <h1>VELVEX</h1>
-            </div>
-            <div class="promo-text-right">
-                <p>COMPRA E VENDA</p>
-            </div>
-        </div>
-    </main>
+{% block title %}Página Inicial - Velvex{% endblock %}
 
-    <section class="category-showcase">
-        <div class="category-panel">
-            <div class="product-images">
-                <img src="{{ url_for('static', filename='images/sneakers.png') }}" alt="Tênis Sneakers">
-            </div>
-            <h3><a href="{{ url_for('anuncios_page', categoria_filtro='sneakers') }}">Shop Sneakers &gt;</a></h3> 
-        </div>
-        <div class="category-panel">
-            <div class="product-images">
-                <img src="{{ url_for('static', filename='images/roupa.png') }}" alt="Peça de Roupa">
-            </div>
-            <h3><a href="{{ url_for('anuncios_page', categoria_filtro='vestuario') }}">Shop Apparel &gt;</a></h3> 
-        </div>
-        <div class="category-panel">
-            <div class="product-images">
-                <img src="{{ url_for('static', filename='images/bag.png') }}" alt="Bolsa">
-            </div>
-            <h3><a href="{{ url_for('anuncios_page', categoria_filtro='acessorios_bolsas') }}">Shop Bags &gt;</a></h3> 
-        </div>
-        <div class="category-panel">
-            <div class="product-images">
-                <img src="{{ url_for('static', filename='images/pulse.png') }}" alt="Acessório Pulse">
-            </div>
-            <h3><a href="{{ url_for('anuncios_page', categoria_filtro='acessorios') }}">Shop Accessories &gt;</a></h3> 
-        </div>
-    </section>
+{% block head_content %}
+    <style>
+        /* Estilos para o vídeo de fundo */
+        .video-background {
+            position: relative;
+            overflow: hidden;
+            height: 500px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            text-align: center;
 
-    <footer class="site-footer-nav">
-        <nav>
-            <a href="{{ url_for('quem_somos_page') }}">Quem Somos</a>
-            <a href="{{ url_for('compre_page') }}">Compre</a>
-            <a href="{{ url_for('venda_page') }}">Venda</a>
-            <a href="{{ url_for('suporte_page') }}">Suporte</a>
-            <a href="{{ url_for('termos_page') }}">Termo de Responsabilidade</a>
-        </nav>
-    </footer>
+            /* Adicionado para pegar a largura horizontal completa */
+            width: 100vw; /* Garante que o elemento ocupe 100% da largura do viewport */
+            position: relative; /* Mantém o posicionamento relativo */
+            left: 50%; /* Move o elemento para o centro do viewport */
+            transform: translateX(-50%); /* Move o elemento de volta pela metade de sua própria largura, centralizando-o */
+            margin-left: auto; /* Ajuda a centralizar em alguns layouts */
+            margin-right: auto; /* Ajuda a centralizar em alguns layouts */
+        }
 
-    <div id="searchPopup" class="search-popup-overlay">
-        <div class="search-popup-content">
-            <span class="close-popup" id="closeSearchPopup">&times;</span>
-            <h2>Pesquisar no Site</h2>
-            <form action="{{ url_for('search_results_page') }}" method="get" class="popup-search-form">
-                <input type="search" name="query_popup" placeholder="O que você procura?" aria-label="Campo de busca popup">
-                <button type="submit" class="btn-principal">Buscar</button>
-            </form>
-            <p style="font-size: 0.8em; color: #ccc; margin-top:15px;">(Busca nos anúncios do site.)</p>
+        .video-background video {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            min-width: 100%;
+            min-height: 100%;
+            width: auto;
+            height: auto;
+            z-index: -1;
+            transform: translateX(-50%) translateY(-50%);
+            object-fit: cover;
+        }
+
+        .video-overlay {
+            /* Alterado para um gradiente que fade para a nova cor de fundo principal */
+            background: linear-gradient(to bottom, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.5) 70%, var(--color-background-main) 100%); /* Fades to the new main background color */
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        /* Estilos para os cards de anúncio na página inicial */
+        .anuncio-card {
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+            /* A borda e cor de fundo do card agora são controladas globalmente em style.css */
+        }
+        .anuncio-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important;
+        }
+        .card-img-wrapper {
+            height: 200px;
+            overflow: hidden;
+        }
+        .card-img-wrapper img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="video-background">
+    <video autoplay loop muted playsinline>
+        <source src="{{ url_for('static', filename='videos/aa.mp4') }}" type="video/mp4">
+        Seu navegador não suporta vídeos HTML5.
+    </video>
+    <div class="video-overlay">
+        <h1 class="display-4 fw-bold">Bem-vindo(a) ao Velvex Marketplace!</h1>
+        <p class="lead">Seu destino para comprar e vender os melhores itens de moda.</p>
+        <div class="mt-4">
+            <a class="btn btn-primary btn-lg" href="{{ url_for('anuncios_page') }}" role="button">Ver Anúncios Agora</a>
+            <a class="btn btn-outline-light btn-lg ms-3" href="{{ url_for('loja_page') }}" role="button">Começar a Vender</a>
+        </div>
+    </div>
+</div>
+
+<div class="container my-5">
+    <div class="row align-items-md-stretch">
+        <div class="col-md-6 mb-4">
+            <div class="h-100 p-5 text-bg-dark rounded-3 shadow-sm"> {# Mantido text-bg-dark para este bloco específico #}
+                <h2>Compre com Confiança</h2>
+                <p>Descubra uma vasta seleção de tênis, vestuário e acessórios autênticos. Encontre o que você procura e faça ofertas justas.</p>
+                <a class="btn btn-outline-light" href="{{ url_for('anuncios_page') }}">Explorar Produtos</a>
+            </div>
+        </div>
+        <div class="col-md-6 mb-4">
+            {# Removido bg-light e text-white, agora controlado por .card global ou classes específicas #}
+            <div class="h-100 p-5 rounded-3 shadow-sm">
+                <h2>Venda Seus Itens</h2>
+                <p>Transforme seus itens não utilizados em dinheiro. Anuncie seus produtos de forma fácil e segura para uma comunidade engajada.</p>
+                <a class="btn btn-outline-secondary" href="{{ url_for('loja_page') }}">Anunciar Agora</a>
+            </div>
         </div>
     </div>
 
-    <script>
-        const openSearchButton = document.getElementById('openSearchPopup');
-        const closeSearchButton = document.getElementById('closeSearchPopup');
-        const searchPopupOverlay = document.getElementById('searchPopup');
-        if(openSearchButton && searchPopupOverlay){openSearchButton.addEventListener('click', function(event){event.preventDefault();searchPopupOverlay.classList.add('active');});}
-        if(closeSearchButton && searchPopupOverlay){closeSearchButton.addEventListener('click', function(){searchPopupOverlay.classList.remove('active');});}
-        if(searchPopupOverlay){searchPopupOverlay.addEventListener('click', function(event){if(event.target === searchPopupOverlay){searchPopupOverlay.classList.remove('active');}});}
-    </script>
-</body>
-</html>
+    <div class="latest-listings mt-5">
+        <h2 class="text-center mb-4">Últimos Anúncios</h2> {# Cor do texto será herdada do body ou .card, então removi text-white #}
+        <div class="row">
+            {% if anuncios %}
+                {% for anuncio in anuncios %}
+                <div class="col-lg-3 col-md-4 col-sm-6 mb-4">
+                    <div class="card h-100 shadow-sm anuncio-card">
+                        <a href="{{ url_for('detalhes_anuncio_page', anuncio_id=anuncio.id) }}" class="text-decoration-none"> {# Removido text-light; cor será herdada do .card #}
+                            <div class="card-img-wrapper">
+                                {% set imagem = anuncio.imagens_nomes.split(',')[0] if anuncio.imagens_nomes else 'placeholder.jpg' %}
+                                <img src="{{ url_for('static', filename='uploads/anuncios/' + imagem.strip()) if 'placeholder' not in imagem else url_for('static', filename='img/placeholder.jpg') }}" class="card-img-top" alt="{{ anuncio.titulo }}">
+                            </div>
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">{{ anuncio.titulo }}</h5> {# Removido text-white; cor será herdada do .card #}
+                                <p class="card-text small flex-grow-1">{{ anuncio.categoria | replace('_', ' ') | capitalize }}</p> {# Removido text-light; cor será herdada do .card #}
+                                <p class="card-text fs-5 fw-bold text-primary mb-0">R$ {{ "%.2f"|format(anuncio.preco) }}</p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="col-12">
+                    <p class="text-center">Ainda não há anúncios disponíveis. Volte em breve!</p> {# Removido text-white; cor será herdada do body #}
+                </div>
+            {% endif %}
+        </div>
+        <div class="text-center mt-3">
+            <a href="{{ url_for('anuncios_page') }}" class="btn btn-outline-primary">Ver todos os anúncios</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

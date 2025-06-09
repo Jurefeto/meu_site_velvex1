@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}Detalhes de Strikes - {{ user.nome }} - Velvex{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">Registro de Infrações de: {{ user.nome }} (ID: {{ user.id }})</h2>
+    <a href="{{ url_for('admin_gerenciar_usuarios_page') }}" class="btn btn-secondary">Voltar para Usuários</a>
+</div>
+
+{% if strike_logs %}
+<div class="card shadow-sm">
+    <div class="card-header">
+        Total de Infrações Registradas: {{ strike_logs|length }}
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Data da Infração</th>
+                    <th>Mensagem Bloqueada</th>
+                    <th>No Anúncio</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in strike_logs %}
+                <tr>
+                    <td>{{ log.timestamp | format_datetime }}</td>
+                    <td class="text-danger" style="white-space: pre-wrap; word-break: break-all;"><code>{{ log.message_content }}</code></td>
+                    <td>
+                        <a href="{{ url_for('anuncio_chat_page', anuncio_id=log.anuncio.id) }}" target="_blank">
+                            {{ log.anuncio.titulo | truncate(40) }} (ID: {{ log.anuncio.id }})
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-success text-center" role="alert">
+    Este usuário não possui nenhuma infração registrada.
+</div>
+{% endif %}
+{% endblock %}

@@ -1,72 +1,222 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Suporte - Velvex</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
-    <header class="site-header">
-        <div class="search-area">
-            <a href="#" id="openSearchPopup">Pesquisar</a>
-        </div>
-        <nav class="main-nav">
-            <a href="{{ url_for('home') }}">Início</a>
-            <a href="{{ url_for('loja_page') }}">Loja (Criar Anúncio)</a>
-            <a href="{{ url_for('anuncios_page') }}">Anuncios</a> 
-        </nav>
-        <div class="account-area">
-            {% if session.user_id %}
-                <a href="{{ url_for('minha_conta_page') }}">{{ session.user_nome }}</a>
-                {% if session.is_admin %}
-                    <a href="{{ url_for('admin_dashboard') }}" style="color: #ffc107;">Admin</a> 
-                {% endif %}
-                <a href="{{ url_for('logout') }}">Logout</a>
-            {% else %}
-                <a href="{{ url_for('login_page') }}">Minha Conta / Login</a>
-            {% endif %}
-        </div>
-    </header>
+{% extends "base.html" %}
 
-    <div class="info-page-container">
-        <aside class="info-sidebar">
-            <nav class="info-nav">
-                <ul>
-                    <li><a href="{{ url_for('quem_somos_page') }}">Quem Somos</a></li>
-                    <li><a href="{{ url_for('compre_page') }}">Compre na Velvex</a></li>
-                    <li><a href="{{ url_for('venda_page') }}">Venda na Velvex</a></li>
-                    <li><a href="{{ url_for('suporte_page') }}" class="active">Suporte</a></li>
-                    <li><a href="{{ url_for('termos_page') }}">Termo de Responsabilidade</a></li>
-                </ul>
-            </nav>
-        </aside>
-        <main class="info-content">
-            <h1>Suporte</h1>
-            <p>Entre em contato conosco pelos seguintes canais:</p>
-            <p><strong>Instagram:</strong> <a href="https://www.instagram.com/Velvex" target="_blank" rel="noopener noreferrer">@Velvex</a> (Por favor, substitua pelo link real do seu Instagram)</p>
-            <p><strong>Email:</strong> <a href="mailto:rfliberatto@gmail.com">rfliberatto@gmail.com</a></p>
-        </main>
-    </div>
+{% block title %}Suporte - Velvex{% endblock %}
 
-    <div id="searchPopup" class="search-popup-overlay">
-        <div class="search-popup-content">
-            <span class="close-popup" id="closeSearchPopup">&times;</span>
-            <h2>Pesquisar no Site</h2>
-            <form action="{{ url_for('search_results_page') }}" method="get" class="popup-search-form">
-                <input type="search" name="query_popup" placeholder="O que você procura?" aria-label="Campo de busca popup">
-                <button type="submit" class="btn-principal">Buscar</button>
-            </form>
-            <p style="font-size: 0.8em; color: #ccc; margin-top:15px;">(Busca nos anúncios do site.)</p>
+{% block head_content %}
+    <style>
+        /* Estilos para o Hero Section */
+        .hero-suporte {
+            background-color: #007bff; /* Azul vibrante */
+            color: white;
+            padding: 40px 0; /* Reduzido o padding para altura */
+            text-align: center;
+            margin-bottom: 30px; /* Reduzido o espaço abaixo do hero */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Leve sombra */
+        }
+        .hero-suporte h1 {
+            font-size: 2.5rem; /* Título menor, similar aos h3/h4 em loja.html */
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .hero-suporte p {
+            font-size: 1.2rem; /* Parágrafo menor */
+            max-width: 600px; /* Limitar largura para melhor leitura */
+            margin: 0 auto; /* Centralizar parágrafo */
+        }
+
+        /* Estilos para o título das Dúvidas Frequentes */
+        .faq-title {
+            text-align: center;
+            font-size: 2rem; /* Título menor para FAQ */
+            color: #343a40; /* Cor mais escura para contraste */
+            margin-bottom: 30px; /* Reduzido o espaço abaixo do título */
+            font-weight: 700; /* Negrito */
+        }
+
+        /* Estilos para o Acordeão (Sanfona) */
+        .accordion {
+            margin-top: 20px; /* Espaço do título FAQ até o acordeão */
+        }
+        .accordion-item {
+            border: 1px solid #e0e0e0; /* Bordas mais suaves */
+            border-radius: .3rem; /* Bordas um pouco menos arredondadas */
+            margin-bottom: 10px; /* Reduzido o espaço entre os itens */
+            overflow: hidden; /* Garante que o border-radius funcione bem */
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); /* Sombra mais sutil para cada item */
+            transition: all 0.2s ease-in-out; /* Transição mais rápida */
+        }
+        .accordion-item:hover {
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); /* Sombra menor no hover */
+            transform: translateY(-1px); /* Leve levantamento no hover */
+        }
+        .accordion-button {
+            font-size: 1.1rem; /* Fonte da pergunta menor */
+            padding: 1rem 1.2rem; /* Reduzido o padding dentro do botão */
+            color: #333; /* Cor mais escura para o texto da pergunta */
+            font-weight: 600; /* Pergunta em negrito */
+            background-color: #f8f9fa; /* Fundo levemente cinza para o botão */
+            border-bottom: 1px solid #e9ecef; /* Linha sutil entre botão e conteúdo */
+            border-radius: .3rem .3rem 0 0; /* Arredondamento apenas em cima */
+        }
+        .accordion-button:not(.collapsed) {
+            color: #007bff; /* Cor primária quando expandido */
+            background-color: #eaf6ff; /* Fundo mais claro quando expandido */
+            border-bottom-color: #007bff; /* Borda inferior com cor primária */
+        }
+        .accordion-button:after {
+            flex-shrink: 0;
+            width: 1rem; /* Tamanho da seta menor */
+            height: 1rem; /* Tamanho da seta menor */
+            margin-left: auto;
+            content: "";
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23212529'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3csvg%3e"); /* Seta para baixo */
+            background-repeat: no-repeat;
+            background-size: 1rem; /* Tamanho da seta menor */
+            transition: transform .2s ease-in-out;
+        }
+        .accordion-button:not(.collapsed):after {
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23052c65'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3csvg%3e"); /* Seta para cima quando expandido */
+            transform: rotate(-180deg);
+        }
+        .accordion-collapse {
+            border: 0;
+        }
+        .accordion-body {
+            padding: 1.2rem; /* Reduzido o padding no conteúdo da resposta */
+            font-size: 0.95rem; /* Tamanho do texto da resposta menor */
+            line-height: 1.6; /* Espaçamento de linha para melhor leitura */
+            color: #555; /* Cor mais suave para o texto da resposta */
+            background-color: #fff; /* Fundo branco para o corpo */
+        }
+        .accordion-body strong {
+            color: #333; /* Negrito mais escuro */
+        }
+        .accordion-body ul {
+            margin-top: 8px;
+            margin-bottom: 8px;
+            list-style: disc;
+            margin-left: 20px; /* Reduzido a indentação para a lista */
+        }
+        .accordion-body li {
+            margin-bottom: 6px; /* Espaçamento entre itens da lista */
+        }
+
+        /* Seção "Precisa de Mais Ajuda?" */
+        .mais-ajuda-section {
+            background-color: #e9ecef; /* Fundo cinza claro */
+            color: #343a40; /* Cor do texto */
+            padding: 40px 0; /* Reduzido o padding */
+            border-radius: 0.5rem; /* Bordas menos arredondadas */
+            margin-top: 50px; /* Reduzido o espaço antes dessa seção */
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1); /* Sombra menos pronunciada */
+            text-align: center; /* Centralizar conteúdo */
+        }
+        .mais-ajuda-section h2 {
+            font-size: 2rem; /* Tamanho do título menor */
+            margin-bottom: 20px;
+            font-weight: 700;
+        }
+        .mais-ajuda-section p {
+            font-size: 1.1rem; /* Tamanho do parágrafo menor */
+            margin-bottom: 25px;
+        }
+        .mais-ajuda-section .btn { /* Corrigido o seletor para .mais-ajuda-section .btn */
+            padding: 12px 25px; /* Botão menor */
+            font-size: 1.1rem;
+            border-radius: 0.5rem; /* Bordas arredondadas no botão */
+            transition: all 0.2s ease;
+        }
+        .mais-ajuda-section .btn:hover {
+            transform: translateY(-2px); /* Efeito de "levantar" no hover */
+            box-shadow: 0 5px 10px rgba(0,0,0,0.2);
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+
+<div class="hero-suporte">
+    <div class="container">
+        <h1>Estamos aqui para ajudar!</h1>
+        <p>Encontre as respostas para suas principais dúvidas ou entre em contato conosco.</p>
+    </div>
+</div>
+
+<div class="container my-5">
+    <h2 class="faq-title">Dúvidas Frequentes</h2>
+
+    <div class="accordion" id="faqAccordion">
+
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="headingOne">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
+                    Como faço para anunciar um produto?
+                </button>
+            </h2>
+            <div id="collapseOne" class="accordion-collapse collapse" aria-labelledby="headingOne" data-bs-parent="#faqAccordion">
+                <div class="accordion-body">
+                    <p>Desbloqueie o poder das vendas com apenas alguns cliques!</p>
+                    <p>Criar seu anúncio é fácil: <strong>tenha uma conta</strong>, faça login e vá direto para a página "<strong>Vender</strong>". Lá, você poderá descrever seu produto em detalhes e adicionar fotos que realmente o destaquem.</p>
+                    <p>Nosso processo de pré-aprovação garante anúncios de alta qualidade para todos. E para sua segurança e a do comprador, o mesmo produto passará por uma avaliação presencial após a venda.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="headingTwo">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+                    Como funciona o pagamento e a entrega?
+                </button>
+            </h2>
+            <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="headingTwo" data-bs-parent="#faqAccordion">
+                <div class="accordion-body">
+                    <p>Na Velvex, conectamos compradores e vendedores de forma simples e segura. Tudo é feito por aqui: <strong>do pagamento à entrega</strong>, garantindo uma experiência tranquila para você.</p>
+                    <p>Cobramos uma taxa simbólica sobre o valor da venda para cobrir nossos serviços e garantir a segurança das transações:</p>
+                    <ul>
+                        <li><strong>Sneakers:</strong> 8%</li>
+                        <li><strong>Roupas "Street":</strong> 7%</li>
+                        <li><strong>Marcas de Alta Costura:</strong> 9%</li>
+                    </ul>
+                    <p>Além disso, há uma <strong>taxa fixa de R$20,00 por verificação do produto</strong>, o que nos permite oferecer ainda mais segurança. Consulte as formas de pagamento no checkout e a entrega realizada pelos correios. <strong>Negocie e conclua suas vendas diretamente pelo site, sem preocupações com golpes!</strong></p>
+                </div>
+            </div>
+        </div>
+
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="headingThree">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
+                    Posso fazer uma oferta em um anúncio?
+                </button>
+            </h2>
+            <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree" data-bs-parent="#faqAccordion">
+                <div class="accordion-body">
+                    <p>Sim, em nossa plataforma, você pode enviar ofertas para produtos anunciados, desde que o vendedor tenha habilitado essa opção. Basta clicar no botão "Fazer Oferta" na página do produto e preencher o valor desejado. O vendedor terá um prazo para aceitar ou recusar.</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+    <div class="row mt-5">
+        <div class="col-12 mais-ajuda-section">
+            <h2>Precisa de Mais Ajuda?</h2>
+            <p class="lead">Se suas dúvidas não foram respondidas, entre em contato com nossa equipe de suporte.</p>
+            <a href="#" onclick="iniciarChatComID(1); return false;" class="btn btn-primary btn-lg mt-3">Fale Conosco</a>
         </div>
     </div>
-    <script>
-        const openSearchButton = document.getElementById('openSearchPopup');
-        const closeSearchButton = document.getElementById('closeSearchPopup');
-        const searchPopupOverlay = document.getElementById('searchPopup');
-        if(openSearchButton && searchPopupOverlay){openSearchButton.addEventListener('click', function(event){event.preventDefault();searchPopupOverlay.classList.add('active');});}
-        if(closeSearchButton && searchPopupOverlay){closeSearchButton.addEventListener('click', function(){searchPopupOverlay.classList.remove('active');});}
-        if(searchPopupOverlay){searchPopupOverlay.addEventListener('click', function(event){if(event.target === searchPopupOverlay){searchPopupOverlay.classList.remove('active');}});}
-    </script>
-</body>
-</html>
+</div>
+
+<script>
+    function iniciarChatComID(chatId) {
+        console.log("Iniciando chat com ID:", chatId);
+        // Coloque aqui o código real para abrir seu sistema de chat.
+        // Isso dependerá da sua plataforma de chat ou da sua implementação customizada.
+        // Por exemplo, se você usa uma API de chat, seria algo como:
+        // window.myChatApi.openChat({ id: chatId });
+        // Ou, se for um chat simples que você mesmo implementou, pode ser:
+        // alert("Abrindo chat com suporte ID " + chatId + ".");
+        // window.location.href = '/meu-chat-customizado?id=' + chatId; // Redireciona para uma página de chat
+        alert("Simulando abertura de chat com ID " + chatId + ".");
+    }
+</script>
+
+{% endblock %}

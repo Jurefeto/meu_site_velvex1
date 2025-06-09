@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+
+{% block title %}Meus Pedidos - Velvex{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <h1 class="mb-4">Meus Pedidos</h1>
+    
+    <!-- Abas para diferentes tipos de pedidos -->
+    <ul class="nav nav-tabs mb-4" id="pedidosTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="compras-tab" data-bs-toggle="tab" data-bs-target="#compras" type="button" role="tab">
+                <i class="fas fa-shopping-bag"></i> Minhas Compras
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="vendas-tab" data-bs-toggle="tab" data-bs-target="#vendas" type="button" role="tab">
+                <i class="fas fa-store"></i> Minhas Vendas
+            </button>
+        </li>
+    </ul>
+    
+    <div class="tab-content" id="pedidosTabsContent">
+        <!-- Aba de Compras -->
+        <div class="tab-pane fade show active" id="compras" role="tabpanel">
+            <h3>Minhas Compras</h3>
+            {% set compras = pedidos|selectattr('user_id', 'equalto', session.user_id)|list %}
+            {% if compras %}
+                {% for pedido in compras %}
+                <div class="card mb-3">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">Pedido #{{ pedido.id }} - {{ pedido.anuncio.titulo }}</h6>
+                        <span class="badge 
+                            {% if pedido.status == 'pendente' %}bg-warning
+                            {% elif pedido.status == 'pago' %}bg-info
+                            {% elif pedido.status == 'enviado' %}bg-primary
+                            {% elif pedido.status == 'entregue' %}bg-success
+                            {% elif pedido.status == 'cancelado' %}bg-danger
+                            {% endif %}">
+                            {{ pedido.status|title }}
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3">
+                                {% set imagens_list = pedido.anuncio.imagens_nomes.split(',') if pedido.anuncio.imagens_nomes else [] %}
+                                {% if imagens_list %}
+                                    <img src="{{ url_for('static', filename='uploads/anuncios/' + imagens_list[0].strip()) }}" 
+                                         alt="{{ pedido.anuncio.titulo }}" 
+                                         class="img-thumbnail" style="width: 100px; height: 100px; object-fit: cover;">
+                                {% else %}
+                                    <img src="{{ url_for('static', filename='img/placeholder.jpg') }}" 
+                                         alt="Sem imagem" 
+                                         class="img-thumbnail" style="width: 100px; height: 100px; object-fit: cover;">
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <h6>{{ pedido.anuncio.titulo }}</h6>
+                                <p class="mb-1"><strong>Vendedor:</strong> {{ pedido.vendedor.nome }}</p>
+                                <p class="mb-1"><strong>Método de Pagamento:</strong> {{ pedido.metodo_pagamento|title }}</p>
+                                <p class="mb-1"><strong>Total:</strong> R$ {{ "%.2f"|format(pedido.total_brl) }}</p>
+                                {% if pedido.frete_servico %}
+                                <p class="mb-1"><strong>Frete:</strong> {{ pedido.frete_servico }} - {{ pedido.frete_prazo }} dias</p>
+                                {% endif %}
+                                {% if pedido.codigo_rastreio %}
+                                <p class="mb-1"><strong>Código de Rastreio:</strong> {{ pedido.codigo_rastreio }}</p>
+                                {% endif %}
+                                <p class="mb-1"><strong>Data:</strong> {{ pedido.data_criacao|format_datetime }}</p>
+                                {% if pedido.observacoes %}
+                                <p class="mb-1"><strong>Observações:</strong> {{ pedido.observacoes }}</p>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-3">
+                                <div class="d-grid gap-2">
+                                    {% if pedido.status == 'enviado' %}
+                                        <form action="{{ url_for('confirmar_entrega', pedido_id=pedido.id) }}" method="POST">
+                                            <button type="submit" class="btn btn-success btn-sm">
+                                                <i class="fas fa-check"></i> Confirmar Entrega
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                    
+                                    {% if pedido.status == 'pendente' %}
+                                        <form action="{{ url_for('cancelar_pedido', pedido_id=pedido.id) }}" method="POST">
+                                            <button type="submit" class="btn btn-danger btn-sm" 
+                                                    onclick="return confirm('Tem certeza que deseja cancelar este pedido?')">
+                                                <i class="fas fa-times"></i> Cancelar Pedido
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                    
+                                    <a href="{{ url_for('anuncio_chat_page', anuncio_id=pedido.anuncio_id) }}" 
+                                       class="btn btn-outline-primary btn-sm">
+                                        <i class="fas fa-comments"></i> Chat com Vendedor
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> Você ainda não fez nenhuma compra.
+                    <a href="{{ url_for('home') }}" class="alert-link">Comece a comprar agora!</a>
+                </div>
+            {% endif %}
+        </div>
+        
+        <!-- Aba de Vendas -->
+        <div class="tab-pane fade" id="vendas" role="tabpanel">
+            <h3>Minhas Vendas</h3>
+            {% set vendas = pedidos|selectattr('vendedor_id', 'equalto', session.user_id)|list %}
+            {% if vendas %}
+                {% for pedido in vendas %}
+                <div class="card mb-3">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">Pedido #{{ pedido.id }} - {{ pedido.anuncio.titulo }}</h6>
+                        <span class="badge 
+                            {% if pedido.status == 'pendente' %}bg-warning
+                            {% elif pedido.status == 'pago' %}bg-info
+                            {% elif pedido.status == 'enviado' %}bg-primary
+                            {% elif pedido.status == 'entregue' %}bg-success
+                            {% elif pedido.status == 'cancelado' %}bg-danger
+                            {% endif %}">
+                            {{ pedido.status|title }}
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3">
+                                {% set imagens_list = pedido.anuncio.imagens_nomes.split(',') if pedido.anuncio.imagens_nomes else [] %}
+                                {% if imagens_list %}
+                                    <img src="{{ url_for('static', filename='uploads/anuncios/' + imagens_list[0].strip()) }}" 
+                                         alt="{{ pedido.anuncio.titulo }}" 
+                                         class="img-thumbnail" style="width: 100px; height: 100px; object-fit: cover;">
+                                {% else %}
+                                    <img src="{{ url_for('static', filename='img/placeholder.jpg') }}" 
+                                         alt="Sem imagem" 
+                                         class="img-thumbnail" style="width: 100px; height: 100px; object-fit: cover;">
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <h6>{{ pedido.anuncio.titulo }}</h6>
+                                <p class="mb-1"><strong>Comprador:</strong> {{ pedido.user.nome }}</p>
+                                <p class="mb-1"><strong>Método de Pagamento:</strong> {{ pedido.metodo_pagamento|title }}</p>
+                                <p class="mb-1"><strong>Total:</strong> R$ {{ "%.2f"|format(pedido.total_brl) }}</p>
+                                {% if pedido.frete_servico %}
+                                <p class="mb-1"><strong>Frete:</strong> {{ pedido.frete_servico }} - {{ pedido.frete_prazo }} dias</p>
+                                {% endif %}
+                                <p class="mb-1"><strong>Data:</strong> {{ pedido.data_criacao|format_datetime }}</p>
+                                {% if pedido.observacoes %}
+                                <p class="mb-1"><strong>Observações:</strong> {{ pedido.observacoes }}</p>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-3">
+                                <div class="d-grid gap-2">
+                                    {% if pedido.status == 'pendente' %}
+                                        <button type="button" class="btn btn-success btn-sm" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#confirmarPagamentoModal{{ pedido.id }}">
+                                            <i class="fas fa-check"></i> Confirmar Pagamento
+                                        </button>
+                                    {% endif %}
+                                    
+                                    {% if pedido.status == 'pago' %}
+                                        <button type="button" class="btn btn-primary btn-sm" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#enviarPedidoModal{{ pedido.id }}">
+                                            <i class="fas fa-shipping-fast"></i> Marcar como Enviado
+                                        </button>
+                                    {% endif %}
+                                    
+                                    {% if pedido.status == 'pendente' %}
+                                        <form action="{{ url_for('cancelar_pedido', pedido_id=pedido.id) }}" method="POST">
+                                            <button type="submit" class="btn btn-danger btn-sm" 
+                                                    onclick="return confirm('Tem certeza que deseja cancelar este pedido?')">
+                                                <i class="fas fa-times"></i> Cancelar Pedido
+                                            </button>
+                                        </form>
+                                    {% endif %}
+                                    
+                                    <a href="{{ url_for('anuncio_chat_page', anuncio_id=pedido.anuncio_id) }}" 
+                                       class="btn btn-outline-primary btn-sm">
+                                        <i class="fas fa-comments"></i> Chat com Comprador
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Modal para Confirmar Pagamento -->
+                {% if pedido.status == 'pendente' %}
+                <div class="modal fade" id="confirmarPagamentoModal{{ pedido.id }}" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Confirmar Pagamento - Pedido #{{ pedido.id }}</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <form action="{{ url_for('confirmar_pagamento_pedido', pedido_id=pedido.id) }}" method="POST" enctype="multipart/form-data">
+                                <div class="modal-body">
+                                    <p>Confirme que você recebeu o pagamento do comprador.</p>
+                                    <div class="mb-3">
+                                        <label for="comprovante{{ pedido.id }}" class="form-label">Comprovante de Pagamento (opcional):</label>
+                                        <input type="file" class="form-control" id="comprovante{{ pedido.id }}" name="comprovante" accept="image/*,.pdf">
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                    <button type="submit" class="btn btn-success">Confirmar Pagamento</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Modal para Enviar Pedido -->
+                {% if pedido.status == 'pago' %}
+                <div class="modal fade" id="enviarPedidoModal{{ pedido.id }}" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Enviar Pedido #{{ pedido.id }}</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <form action="{{ url_for('enviar_pedido', pedido_id=pedido.id) }}" method="POST">
+                                <div class="modal-body">
+                                    <div class="mb-3">
+                                        <label for="codigo_rastreio{{ pedido.id }}" class="form-label">Código de Rastreio:</label>
+                                        <input type="text" class="form-control" id="codigo_rastreio{{ pedido.id }}" name="codigo_rastreio" placeholder="Ex: BR123456789BR">
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                    <button type="submit" class="btn btn-primary">Marcar como Enviado</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                {% endfor %}
+            {% else %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> Você ainda não tem nenhuma venda.
+                    <a href="{{ url_for('loja_page') }}" class="alert-link">Comece a vender agora!</a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %} 

@@ -1,112 +1,65 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aprovar Anúncios - Admin Velvex</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
-    <header class="site-header">
-        <div class="search-area">
-            <a href="#" id="openSearchPopup">Pesquisar</a>
-        </div>
-        <nav class="main-nav">
-            <a href="{{ url_for('home') }}">Início</a>
-            <a href="{{ url_for('loja_page') }}">Loja (Criar Anúncio)</a>
-            <a href="{{ url_for('anuncios_page') }}">Anuncios</a> 
-        </nav>
-        <div class="account-area">
-            {% if session.user_id %}
-                <a href="{{ url_for('minha_conta_page') }}">{{ session.user_nome }}</a>
-                {% if session.is_admin %}
-                    <a href="{{ url_for('admin_dashboard') }}" style="color: #ffc107;">Admin</a> 
-                {% endif %}
-                <a href="{{ url_for('logout') }}">Logout</a>
-            {% else %}
-                <a href="{{ url_for('login_page') }}">Minha Conta / Login</a>
-            {% endif %}
-        </div>
-    </header>
+{% extends "base.html" %}
 
-    <main class="page-content-container admin-page">
-        <div class="admin-panel admin-list-anuncios">
-            <h1>Anúncios Pendentes de Aprovação</h1>
-            <a href="{{ url_for('admin_dashboard') }}" style="display:inline-block; margin-bottom:20px; color: #ccc; text-decoration: underline;">&laquo; Voltar ao Painel Admin</a>
+{% block title %}Aprovar Anúncios - Admin - Velvex{% endblock %}
 
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    <ul class="flash-messages flash-messages_admin">
-                    {% for category, message in messages %}
-                        <li class="flash-message flash-{{ category }}">{{ message }}</li>
-                    {% endfor %}
-                    </ul>
-                {% endif %}
-            {% endwith %}
+{% block content %}
+<h2 class="mb-4">Aprovar/Rejeitar Anúncios</h2>
 
-            {% if anuncios %}
-                <table class="admin-table">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Imagem</th>
-                            <th>Título</th>
-                            <th>Autor</th>
-                            <th>Preço</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for anuncio in anuncios %}
-                        <tr>
-                            <td>{{ anuncio.id }}</td>
-                            <td>
-                                {% if anuncio.imagens_nomes and anuncio.imagens_nomes.split(',')[0] %}
-                                    <img src="{{ url_for('static', filename='uploads/anuncios/' + (anuncio.imagens_nomes.split(',')[0]).strip()) }}" alt="{{ anuncio.titulo }}" style="width: 80px; height: auto; object-fit: cover; border-radius:3px;">
-                                {% else %}
-                                    <span style="font-size:0.85em; color:#777;">Sem Imagem</span>
-                                {% endif %}
-                            </td>
-                            <td><a href="#" class="clickable-anuncio-admin" 
-                                   data-titulo="{{ anuncio.titulo }}"
-                                   data-descricao="{{ anuncio.descricao }}"
-                                   data-preco="{{ "%.2f"|format(anuncio.preco|float) }}"
-                                   data-categoria="{{ anuncio.categoria }}"
-                                   data-condicao="{{ anuncio.condicao }}"
-                                   data-imagens="{{ anuncio.imagens_nomes if anuncio.imagens_nomes else '' }}"
-                                   style="text-decoration:underline; color: #8ab4f8;">{{ anuncio.titulo }}</a>
-                            </td>
-                            <td>{{ anuncio.autor.nome if anuncio.autor else 'N/A' }} (ID: {{ anuncio.user_id }})</td>
-                            <td>R$ {{ "%.2f"|format(anuncio.preco|float) }}</td>
-                            <td>
-                                <div style="display: flex; flex-wrap: wrap; gap: 5px;">
-                                    <form action="{{ url_for('admin_aprovar_anuncio', ad_id=anuncio.id) }}" method="post" style="display: inline;">
-                                        <button type="submit" class="btn-admin btn-approve">Aprovar</button>
-                                    </form>
-                                    <form action="{{ url_for('admin_rejeitar_anuncio', ad_id=anuncio.id) }}" method="post" style="display: inline;">
-                                        <button type="submit" class="btn-admin btn-reject">Rejeitar</button>
-                                    </form>
-                                     <a href="{{ url_for('editar_anuncio_action', anuncio_id=anuncio.id) }}" class="btn-admin" style="background-color: #ffc107; color:#000;">Editar</a>
-                                </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            {% else %}
-                <p>Não há anúncios pendentes de aprovação no momento.</p>
-            {% endif %}
-        </div>
-    </main>
-
-    <div id="searchPopup" class="search-popup-overlay">
-        </div>
-    <div id="anuncioDetalhePopup" class="anuncio-popup-overlay">
-        </div>
-    <script>
-        // Script do Pop-up de Busca (como nas outras páginas)
-        // Script do Pop-up de Detalhes do Anúncio (similar a anuncios.html, mas acionado por .clickable-anuncio-admin)
-        // ... (Você precisará copiar e adaptar o JS do pop-up de detalhes do anúncio aqui)
-    </script>
-</body>
-</html>
+{% if anuncios %}
+<div class="table-responsive">
+    <table class="table table-hover table-striped align-middle">
+        <thead class="table-dark">
+            <tr>
+                <th>ID</th>
+                <th>Imagem</th> {# Adicionado coluna para imagem #}
+                <th>Título</th>
+                <th>Autor</th>
+                <th>Preço</th>
+                <th>Categoria</th>
+                <th>Condição</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for anuncio in anuncios %}
+            <tr>
+                <td>{{ anuncio.id }}</td>
+                <td>
+                    {% set imagens_list = anuncio.imagens_nomes.split(',') if anuncio.imagens_nomes else [] %}
+                    {% if imagens_list %}
+                        <img src="{{ url_for('static', filename='uploads/anuncios/' + imagens_list[0].strip()) }}" alt="{{ anuncio.titulo }}" class="img-thumbnail" style="width: 70px; height: 70px; object-fit: cover;">
+                    {% else %}
+                        <img src="{{ url_for('static', filename='img/placeholder.jpg') }}" alt="Sem imagem" class="img-thumbnail" style="width: 70px; height: 70px; object-fit: cover;">
+                    {% endif %}
+                </td>
+                <td>{{ anuncio.titulo }}</td>
+                <td>{{ anuncio.autor.nome if anuncio.autor else 'Usuário Deletado' }}</td> {# Alterado para 'Usuário Deletado' #}
+                <td>R$ {{ "%.2f"|format(anuncio.preco) }}</td>
+                <td>{{ anuncio.categoria | replace('_', ' ') | capitalize }}</td>
+                <td>{{ anuncio.condicao | replace('_', ' ') | capitalize }}</td>
+                <td>
+                    <div class="d-flex flex-column flex-md-row"> {# Permite empilhar em telas pequenas #}
+                        <a href="{{ url_for('detalhes_anuncio_page', anuncio_id=anuncio.id) }}" class="btn btn-sm btn-outline-info me-md-1 mb-1 mb-md-0">Ver Detalhes</a> {# Adicionado link de detalhes #}
+                        <a href="{{ url_for('editar_anuncio_action', anuncio_id=anuncio.id) }}" class="btn btn-sm btn-outline-warning me-md-1 mb-1 mb-md-0">Editar</a>
+                        <form action="{{ url_for('admin_aprovar_anuncio', ad_id=anuncio.id) }}" method="POST" class="d-inline me-md-1 mb-1 mb-md-0">
+                            <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('Tem certeza que deseja APROVAR este anúncio?')">Aprovar</button>
+                        </form>
+                        <form action="{{ url_for('admin_rejeitar_anuncio', ad_id=anuncio.id) }}" method="POST" class="d-inline">
+                            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Tem certeza que deseja REJEITAR este anúncio?')">Rejeitar</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="alert alert-info text-center" role="alert">
+    Não há anúncios pendentes de aprovação no momento.
+</div>
+{% endif %}
+<div class="mt-4">
+    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">Voltar ao Painel</a>
+</div>
+{% endblock %}

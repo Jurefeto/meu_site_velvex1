@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Chat - {{ anuncio.titulo }} - Velvex{% endblock %}
+
+{% block head_content %}
+    <style>
+        .chat-container { max-height: 500px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 0.25rem; padding: 15px; display: flex; flex-direction: column; gap: 10px; background-color: #f8f9fa; }
+        .message-bubble { max-width: 70%; padding: 10px 15px; border-radius: 20px; word-wrap: break-word; }
+        .message-bubble.sent { background-color: #007bff; color: white; align-self: flex-end; }
+        .message-bubble.received { background-color: #e2e6ea; color: #212529; align-self: flex-start; }
+        .message-info { font-size: 0.75rem; color: #6c757d; margin-top: 5px; }
+        .message-info.sent { text-align: right; }
+        .message-info.received { text-align: left; }
+        .chat-warning { border-left: 5px solid #ffc107; padding: 10px 15px; background-color: #fff3cd; color: #856404; margin-bottom: 1rem; border-radius: 0.25rem; font-weight: bold; }
+        .chat-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-9 col-md-10">
+        
+        <div class="chat-header">
+            <h2 class="mb-0">Chat sobre: "{{ anuncio.titulo }}"</h2>
+            <!-- BOTÃO DE DENÚNCIA -->
+            {% if other_participant_id %}
+            <form action="{{ url_for('report_chat', anuncio_id=anuncio.id, reported_user_id=other_participant_id) }}" method="POST" onsubmit="return confirm('Tem certeza que deseja denunciar esta conversa por comportamento inadequado ou tentativa de negociação externa?');">
+                <button type="submit" class="btn btn-sm btn-outline-danger">
+                    <i class="fas fa-exclamation-triangle me-1"></i> Denunciar Conversa
+                </button>
+            </form>
+            {% endif %}
+        </div>
+        
+        <div class="chat-warning">
+            <p class="mb-0"><strong>Negocie com Segurança!</strong> Para sua proteção, não compartilhe dados de contato (telefone, e-mail, etc). Mensagens com essas informações serão bloqueadas e podem levar à suspensão do chat.</p>
+        </div>
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-primary text-white">Conversa</div>
+            <div class="card-body">
+                <div class="chat-container">
+                    {% if chat_messages %}
+                        {% for message in chat_messages %}
+                            <div class="d-flex flex-column {% if message.sender_id == current_user_id %}align-items-end{% else %}align-items-start{% endif %}">
+                                <div class="message-bubble {% if message.sender_id == current_user_id %}sent{% else %}received{% endif %}">
+                                    {{ message.content }}
+                                </div>
+                                <div class="message-info {% if message.sender_id == current_user_id %}sent{% else %}received{% endif %}">
+                                    ID: {{ message.sender_id }} - {{ message.timestamp | format_datetime }}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-center text-muted">Nenhuma mensagem ainda. Seja o primeiro a iniciar a conversa!</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-header bg-light">Enviar Mensagem</div>
+            <div class="card-body">
+                <form action="{{ url_for('anuncio_chat_page', anuncio_id=anuncio.id) }}" method="POST">
+                    <div class="mb-3">
+                        <textarea class="form-control" name="message_content" rows="3" placeholder="Digite sua mensagem aqui..." required></textarea>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">Enviar Mensagem</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

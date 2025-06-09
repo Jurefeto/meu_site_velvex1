@@ -1,70 +1,49 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Compre na Velvex - Velvex</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
-    <header class="site-header">
-        <div class="search-area">
-            <a href="#" id="openSearchPopup">Pesquisar</a>
-        </div>
-        <nav class="main-nav">
-            <a href="{{ url_for('home') }}">Início</a>
-            <a href="{{ url_for('loja_page') }}">Loja (Criar Anúncio)</a>
-            <a href="{{ url_for('anuncios_page') }}">Anuncios</a> 
-        </nav>
-        <div class="account-area">
-            {% if session.user_id %}
-                <a href="{{ url_for('minha_conta_page') }}">{{ session.user_nome }}</a>
-                {% if session.is_admin %}
-                    <a href="{{ url_for('admin_dashboard') }}" style="color: #ffc107;">Admin</a> 
-                {% endif %}
-                <a href="{{ url_for('logout') }}">Logout</a>
-            {% else %}
-                <a href="{{ url_for('login_page') }}">Minha Conta / Login</a>
-            {% endif %}
-        </div>
-    </header>
+{% extends "base.html" %}
 
-    <div class="info-page-container">
-        <aside class="info-sidebar">
-            <nav class="info-nav">
-                <ul>
-                    <li><a href="{{ url_for('quem_somos_page') }}">Quem Somos</a></li>
-                    <li><a href="{{ url_for('compre_page') }}" class="active">Compre na Velvex</a></li>
-                    <li><a href="{{ url_for('venda_page') }}">Venda na Velvex</a></li>
-                    <li><a href="{{ url_for('suporte_page') }}">Suporte</a></li>
-                    <li><a href="{{ url_for('termos_page') }}">Termo de Responsabilidade</a></li>
-                </ul>
-            </nav>
-        </aside>
-        <main class="info-content">
-            <h1>Compre na Velvex</h1>
-            <p>Aqui na Velvex damos possibilidade de compras com: cartão de credito, debito, parcelado e criptomoedas. Garantimos a autencitidade de todos os produtos, o vendedor apenas recebe o dinheiro quando o produto foi checado por nossa e equipe e você confirmar a entrega do mesmo.</p>
-        </main>
+{% block title %}Como Comprar - Velvex{% endblock %}
+
+{% block content %}
+<div class="p-5 mb-4 bg-primary text-white rounded-3 shadow-sm">
+    <div class="container-fluid py-5">
+        <h1 class="display-5 fw-bold text-center">Como Comprar na Velvex</h1>
+        <p class="fs-4 text-center">Seu guia para encontrar os melhores itens.</p>
     </div>
+</div>
 
-    <div id="searchPopup" class="search-popup-overlay">
-        <div class="search-popup-content">
-            <span class="close-popup" id="closeSearchPopup">&times;</span>
-            <h2>Pesquisar no Site</h2>
-            <form action="{{ url_for('search_results_page') }}" method="get" class="popup-search-form">
-                <input type="search" name="query_popup" placeholder="O que você procura?" aria-label="Campo de busca popup">
-                <button type="submit" class="btn-principal">Buscar</button>
-            </form>
-            <p style="font-size: 0.8em; color: #ccc; margin-top:15px;">(Busca nos anúncios do site.)</p>
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow-sm mb-4">
+            <div class="card-body p-4">
+                <h4 class="mb-3">Passo a Passo para Comprar:</h4>
+                <ol>
+                    <li class="mb-2">
+                        <strong>Explore os Anúncios:</strong> Navegue pela nossa <a href="{{ url_for('anuncios_page') }}">página de anúncios</a>. Você pode usar os filtros de categoria, preço e condição para encontrar exatamente o que procura.
+                    </li>
+                    <li class="mb-2">
+                        <strong>Detalhes do Produto:</strong> Clique em um anúncio para ver fotos detalhadas, descrição completa e informações do vendedor.
+                    </li>
+                    <li class="mb-2">
+                        <strong>Faça uma Oferta ou Compre:</strong>
+                        <ul>
+                            <li>Se houver a opção "Fazer Oferta", você pode propor um preço ao vendedor. Ele poderá aceitar ou rejeitar sua oferta.</li>
+                            <li>Para comprar o item pelo preço anunciado, adicione-o ao seu carrinho e prossiga para o checkout.</li>
+                        </ul>
+                    </li>
+                    <li class="mb-2">
+                        <strong>Checkout:</strong> No carrinho, revise seus itens e prossiga para o checkout. **Lembre-se: no momento, a Velvex não processa pagamentos diretamente.** Você será instruído a entrar em contato com o vendedor para combinar o pagamento (ex: Pix, TED) e a forma de entrega (ex: Correios, retirada em mãos).
+                    </li>
+                    <li class="mb-2">
+                        <strong>Finalize a Transação:</strong> Após combinar com o vendedor, efetue o pagamento e aguarde a entrega do seu item.
+                    </li>
+                </ol>
+
+                <div class="alert alert-info mt-4" role="alert">
+                    Sempre recomendamos a comunicação clara e a verificação das informações do vendedor antes de finalizar qualquer transação.
+                </div>
+
+                <p class="mt-4 text-center">Pronto para começar a comprar? <a href="{{ url_for('anuncios_page') }}" class="btn btn-primary mt-2">Ver Anúncios Agora</a></p>
+            </div>
         </div>
     </div>
-    <script>
-        const openSearchButton = document.getElementById('openSearchPopup');
-        const closeSearchButton = document.getElementById('closeSearchPopup');
-        const searchPopupOverlay = document.getElementById('searchPopup');
-        if(openSearchButton && searchPopupOverlay){openSearchButton.addEventListener('click', function(event){event.preventDefault();searchPopupOverlay.classList.add('active');});}
-        if(closeSearchButton && searchPopupOverlay){closeSearchButton.addEventListener('click', function(){searchPopupOverlay.classList.remove('active');});}
-        if(searchPopupOverlay){searchPopupOverlay.addEventListener('click', function(event){if(event.target === searchPopupOverlay){searchPopupOverlay.classList.remove('active');}});}
-    </script>
-</body>
-</html>
+</div>
+{% endblock %}

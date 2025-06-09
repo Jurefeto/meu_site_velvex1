@@ -1,72 +1,46 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Suporte - Velvex</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
-    <header class="site-header">
-        <div class="search-area">
-            <a href="#" id="openSearchPopup">Pesquisar</a>
-        </div>
-        <nav class="main-nav">
-            <a href="{{ url_for('home') }}">Início</a>
-            <a href="{{ url_for('loja_page') }}">Loja (Criar Anúncio)</a>
-            <a href="{{ url_for('anuncios_page') }}">Anuncios</a> 
-        </nav>
-        <div class="account-area">
-            {% if session.user_id %}
-                <a href="{{ url_for('minha_conta_page') }}">{{ session.user_nome }}</a>
-                {% if session.is_admin %}
-                    <a href="{{ url_for('admin_dashboard') }}" style="color: #ffc107;">Admin</a> 
-                {% endif %}
-                <a href="{{ url_for('logout') }}">Logout</a>
-            {% else %}
-                <a href="{{ url_for('login_page') }}">Minha Conta / Login</a>
-            {% endif %}
-        </div>
-    </header>
+{% extends "base.html" %}
 
-    <div class="info-page-container">
-        <aside class="info-sidebar">
-            <nav class="info-nav">
-                <ul>
-                    <li><a href="{{ url_for('quem_somos_page') }}">Quem Somos</a></li>
-                    <li><a href="{{ url_for('compre_page') }}">Compre na Velvex</a></li>
-                    <li><a href="{{ url_for('venda_page') }}">Venda na Velvex</a></li>
-                    <li><a href="{{ url_for('suporte_page') }}" class="active">Suporte</a></li>
-                    <li><a href="{{ url_for('termos_page') }}">Termo de Responsabilidade</a></li>
-                </ul>
-            </nav>
-        </aside>
-        <main class="info-content">
-            <h1>Suporte</h1>
-            <p>Entre em contato conosco pelos seguintes canais:</p>
-            <p><strong>Instagram:</strong> <a href="https://www.instagram.com/Velvex" target="_blank" rel="noopener noreferrer">@Velvex</a> (Por favor, substitua pelo link real do seu Instagram)</p>
-            <p><strong>Email:</strong> <a href="mailto:rfliberatto@gmail.com">rfliberatto@gmail.com</a></p>
-        </main>
+{% block title %}Termos de Uso - Velvex{% endblock %}
+
+{% block content %}
+<div class="p-5 mb-4 bg-secondary text-white rounded-3 shadow-sm">
+    <div class="container-fluid py-5">
+        <h1 class="display-5 fw-bold text-center">Termos de Uso da Velvex Marketplace</h1>
+        <p class="fs-4 text-center">Leia atentamente antes de usar nossa plataforma.</p>
     </div>
+</div>
 
-    <div id="searchPopup" class="search-popup-overlay">
-        <div class="search-popup-content">
-            <span class="close-popup" id="closeSearchPopup">&times;</span>
-            <h2>Pesquisar no Site</h2>
-            <form action="{{ url_for('search_results_page') }}" method="get" class="popup-search-form">
-                <input type="search" name="query_popup" placeholder="O que você procura?" aria-label="Campo de busca popup">
-                <button type="submit" class="btn-principal">Buscar</button>
-            </form>
-            <p style="font-size: 0.8em; color: #ccc; margin-top:15px;">(Busca nos anúncios do site.)</p>
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow-sm mb-4">
+            <div class="card-body p-4">
+                <h4 class="mb-3">1. Aceitação dos Termos</h4>
+                <p>Ao acessar e utilizar o Velvex Marketplace, você concorda em cumprir e estar vinculado aos presentes Termos de Uso. Se você não concordar com qualquer parte dos termos, não deverá utilizar a plataforma.</p>
+
+                <h4 class="mt-4">2. Uso da Plataforma</h4>
+                <p>A Velvex é uma plataforma de classificados online para compra e venda de itens de moda urbana. Os usuários são responsáveis por todas as atividades realizadas através de suas contas.</p>
+
+                <h4 class="mt-4">3. Conteúdo do Usuário</h4>
+                <p>Você é responsável por todo o conteúdo (textos, imagens, informações) que publica na plataforma. É proibido publicar conteúdo ilegal, ofensivo, difamatório, ou que viole direitos de propriedade intelectual.</p>
+
+                <h4 class="mt-4">4. Transações e Pagamentos</h4>
+                <p>A Velvex não processa pagamentos diretamente. A negociação e o arranjo de pagamento e entrega são de responsabilidade exclusiva entre comprador e vendedor. A Velvex não se responsabiliza por disputas, fraudes ou problemas decorrentes das transações.</p>
+
+                <h4 class="mt-4">5. Propriedade Intelectual</h4>
+                <p>Todo o conteúdo da Velvex (design, textos, gráficos, logotipos) é de propriedade da Velvex ou de seus licenciadores e está protegido por leis de direitos autorais e marcas registradas.</p>
+
+                <h4 class="mt-4">6. Limitação de Responsabilidade</h4>
+                <p>A Velvex não garante a exatidão, integridade ou qualidade do conteúdo publicado por usuários ou a disponibilidade contínua da plataforma. Não seremos responsáveis por quaisquer danos diretos, indiretos, incidentais ou consequenciais resultantes do uso ou da impossibilidade de uso da plataforma.</p>
+
+                <h4 class="mt-4">7. Alterações nos Termos</h4>
+                <p>A Velvex reserva-se o direito de modificar estes Termos de Uso a qualquer momento. As modificações entrarão em vigor imediatamente após a publicação na plataforma. Seu uso continuado da plataforma após as alterações constitui aceitação dos novos termos.</p>
+
+                <h4 class="mt-4">8. Lei Aplicável</h4>
+                <p>Estes Termos de Uso serão regidos e interpretados de acordo com as leis do Brasil.</p>
+
+                <p class="mt-4 text-center">Para mais informações, entre em contato com nosso <a href="{{ url_for('suporte_page') }}">Suporte</a>.</p>
+            </div>
         </div>
     </div>
-    <script>
-        const openSearchButton = document.getElementById('openSearchPopup');
-        const closeSearchButton = document.getElementById('closeSearchPopup');
-        const searchPopupOverlay = document.getElementById('searchPopup');
-        if(openSearchButton && searchPopupOverlay){openSearchButton.addEventListener('click', function(event){event.preventDefault();searchPopupOverlay.classList.add('active');});}
-        if(closeSearchButton && searchPopupOverlay){closeSearchButton.addEventListener('click', function(){searchPopupOverlay.classList.remove('active');});}
-        if(searchPopupOverlay){searchPopupOverlay.addEventListener('click', function(event){if(event.target === searchPopupOverlay){searchPopupOverlay.classList.remove('active');}});}
-    </script>
-</body>
-</html>
+</div>
+{% endblock %}

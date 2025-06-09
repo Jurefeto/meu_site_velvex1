@@ -1,70 +1,48 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Venda na Velvex - Velvex</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
-    <header class="site-header">
-        <div class="search-area">
-            <a href="#" id="openSearchPopup">Pesquisar</a>
-        </div>
-        <nav class="main-nav">
-            <a href="{{ url_for('home') }}">Início</a>
-            <a href="{{ url_for('loja_page') }}">Loja (Criar Anúncio)</a>
-            <a href="{{ url_for('anuncios_page') }}">Anuncios</a> 
-        </nav>
-        <div class="account-area">
-            {% if session.user_id %}
-                <a href="{{ url_for('minha_conta_page') }}">{{ session.user_nome }}</a>
-                {% if session.is_admin %}
-                    <a href="{{ url_for('admin_dashboard') }}" style="color: #ffc107;">Admin</a> 
-                {% endif %}
-                <a href="{{ url_for('logout') }}">Logout</a>
-            {% else %}
-                <a href="{{ url_for('login_page') }}">Minha Conta / Login</a>
-            {% endif %}
-        </div>
-    </header>
+{% extends "base.html" %}
 
-    <div class="info-page-container">
-        <aside class="info-sidebar">
-            <nav class="info-nav">
-                <ul>
-                    <li><a href="{{ url_for('quem_somos_page') }}">Quem Somos</a></li>
-                    <li><a href="{{ url_for('compre_page') }}">Compre na Velvex</a></li>
-                    <li><a href="{{ url_for('venda_page') }}" class="active">Venda na Velvex</a></li>
-                    <li><a href="{{ url_for('suporte_page') }}">Suporte</a></li>
-                    <li><a href="{{ url_for('termos_page') }}">Termo de Responsabilidade</a></li>
-                </ul>
-            </nav>
-        </aside>
-        <main class="info-content">
-            <h1>Venda na Velvex</h1>
-            <p>Conteúdo sobre como vender na Velvex será adicionado aqui em breve.</p>
-        </main>
+{% block title %}Como Vender - Velvex{% endblock %}
+
+{% block content %}
+<div class="p-5 mb-4 bg-success text-white rounded-3 shadow-sm">
+    <div class="container-fluid py-5">
+        <h1 class="display-5 fw-bold text-center">Como Vender na Velvex</h1>
+        <p class="fs-4 text-center">Transforme seus itens em dinheiro de forma fácil e segura.</p>
     </div>
+</div>
 
-    <div id="searchPopup" class="search-popup-overlay">
-        <div class="search-popup-content">
-            <span class="close-popup" id="closeSearchPopup">&times;</span>
-            <h2>Pesquisar no Site</h2>
-            <form action="{{ url_for('search_results_page') }}" method="get" class="popup-search-form">
-                <input type="search" name="query_popup" placeholder="O que você procura?" aria-label="Campo de busca popup">
-                <button type="submit" class="btn-principal">Buscar</button>
-            </form>
-            <p style="font-size: 0.8em; color: #ccc; margin-top:15px;">(Busca nos anúncios do site.)</p>
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow-sm mb-4">
+            <div class="card-body p-4">
+                <h4 class="mb-3">Passo a Passo para Vender:</h4>
+                <ol>
+                    <li class="mb-2">
+                        <strong>Crie sua Conta:</strong> Se ainda não tiver, registre-se na Velvex de forma rápida e gratuita.
+                    </li>
+                    <li class="mb-2">
+                        <strong>Anuncie Seu Item:</strong> Vá até a página <a href="{{ url_for('loja_page') }}">"Vender"</a>. Preencha todos os detalhes do seu produto (título, descrição, categoria, condição, preço) e faça o upload de fotos de alta qualidade.
+                    </li>
+                    <li class="mb-2">
+                        <strong>Aguarde a Aprovação:</strong> Seu anúncio passará por um processo de aprovação da nossa equipe para garantir a qualidade e a conformidade com nossas políticas. Você será notificado sobre o status.
+                    </li>
+                    <li class="mb-2">
+                        <strong>Receba Ofertas:</strong> Uma vez aprovado, seu anúncio estará visível para milhares de compradores. Você poderá receber ofertas, que aparecerão na sua <a href="{{ url_for('minha_conta_page') }}">Minha Conta</a>.
+                    </li>
+                    <li class="mb-2">
+                        <strong>Negocie e Conclua:</strong> Aceite uma oferta. Após a aceitação, entraremos em contato com o comprador para que ele inicie a combinação do pagamento e entrega diretamente com você.
+                    </li>
+                    <li class="mb-2">
+                        <strong>Envie o Produto:</strong> Após confirmar o pagamento, envie o produto conforme combinado com o comprador.
+                    </li>
+                </ol>
+
+                <div class="alert alert-info mt-4" role="alert">
+                    Recomendamos usar descrições precisas e fotos claras para atrair mais compradores. Mantenha-se comunicativo para garantir uma transação tranquila!
+                </div>
+
+                <p class="mt-4 text-center">Pronto para transformar seus itens em dinheiro? <a href="{{ url_for('loja_page') }}" class="btn btn-success mt-2">Anunciar Meu Item Agora</a></p>
+            </div>
         </div>
     </div>
-    <script>
-        const openSearchButton = document.getElementById('openSearchPopup');
-        const closeSearchButton = document.getElementById('closeSearchPopup');
-        const searchPopupOverlay = document.getElementById('searchPopup');
-        if(openSearchButton && searchPopupOverlay){openSearchButton.addEventListener('click', function(event){event.preventDefault();searchPopupOverlay.classList.add('active');});}
-        if(closeSearchButton && searchPopupOverlay){closeSearchButton.addEventListener('click', function(){searchPopupOverlay.classList.remove('active');});}
-        if(searchPopupOverlay){searchPopupOverlay.addEventListener('click', function(event){if(event.target === searchPopupOverlay){searchPopupOverlay.classList.remove('active');}});}
-    </script>
-</body>
-</html>
+</div>
+{% endblock %}

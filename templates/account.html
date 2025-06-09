@@ -1,0 +1,297 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Minha Conta</h2>
+    
+    <!-- Seção de Informações Pessoais -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3>Informações Pessoais</h3>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Nome:</strong> {{ current_user.name }}</p>
+                    <p><strong>Email:</strong> {{ current_user.email }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Telefone:</strong> {{ current_user.phone or 'Não informado' }}</p>
+                    <p><strong>Data de Cadastro:</strong> {{ current_user.created_at.strftime('%d/%m/%Y') }}</p>
+                </div>
+            </div>
+            <a href="#edit-profile" class="btn btn-primary">Editar Perfil</a>
+        </div>
+    </div>
+
+    <!-- Seção de Endereços -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3>Meus Endereços</h3>
+        </div>
+        <div class="card-body">
+            {% if addresses %}
+                <div class="row">
+                    {% for address in addresses %}
+                    <div class="col-md-6 mb-3">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">{{ address.name }}</h5>
+                                <p class="card-text">
+                                    {{ address.street }}, {{ address.number }}<br>
+                                    {% if address.complement %}{{ address.complement }}<br>{% endif %}
+                                    {{ address.district }}<br>
+                                    {{ address.city }}/{{ address.state }}<br>
+                                    CEP: {{ address.postal_code }}
+                                </p>
+                                <div class="btn-group">
+                                    <a href="#edit-address-{{ address.id }}" class="btn btn-sm btn-primary">Editar</a>
+                                    <button class="btn btn-sm btn-danger" onclick="deleteAddress({{ address.id }})">Excluir</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p>Nenhum endereço cadastrado.</p>
+            {% endif %}
+            <a href="#add-address" class="btn btn-success">Adicionar Endereço</a>
+        </div>
+    </div>
+
+    <!-- Seção de Pedidos -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3>Meus Pedidos</h3>
+        </div>
+        <div class="card-body">
+            {% if orders %}
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Número</th>
+                                <th>Data</th>
+                                <th>Status</th>
+                                <th>Total</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for order in orders %}
+                            <tr>
+                                <td>#{{ order.id }}</td>
+                                <td>{{ order.created_at.strftime('%d/%m/%Y') }}</td>
+                                <td>{{ order.status }}</td>
+                                <td>R$ {{ "%.2f"|format(order.total) }}</td>
+                                <td>
+                                    <a href="#order-details-{{ order.id }}" class="btn btn-sm btn-info">Detalhes</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p>Nenhum pedido realizado.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Edição de Perfil -->
+<div class="modal fade" id="edit-profile" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Editar Perfil</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="edit-profile-form">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Nome</label>
+                        <input type="text" class="form-control" id="name" name="name" value="{{ current_user.name }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="phone" class="form-label">Telefone</label>
+                        <input type="tel" class="form-control" id="phone" name="phone" value="{{ current_user.phone or '' }}">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Adicionar Endereço -->
+<div class="modal fade" id="add-address" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Adicionar Endereço</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="add-address-form">
+                    <div class="mb-3">
+                        <label for="address-name" class="form-label">Nome do Endereço</label>
+                        <input type="text" class="form-control" id="address-name" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="street" class="form-label">Rua</label>
+                        <input type="text" class="form-control" id="street" name="street" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="number" class="form-label">Número</label>
+                            <input type="text" class="form-control" id="number" name="number" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="complement" class="form-label">Complemento</label>
+                            <input type="text" class="form-control" id="complement" name="complement">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="district" class="form-label">Bairro</label>
+                        <input type="text" class="form-control" id="district" name="district" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="city" class="form-label">Cidade</label>
+                            <input type="text" class="form-control" id="city" name="city" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="state" class="form-label">Estado</label>
+                            <input type="text" class="form-control" id="state" name="state" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="postal-code" class="form-label">CEP</label>
+                        <input type="text" class="form-control" id="postal-code" name="postal_code" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Adicionar Endereço</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Inicializa todos os modais
+    var modals = document.querySelectorAll('.modal');
+    modals.forEach(function(modal) {
+        new bootstrap.Modal(modal);
+    });
+
+    // Manipula cliques em links com âncoras
+    document.querySelectorAll('a[href^="#"]').forEach(function(link) {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            var targetId = this.getAttribute('href').substring(1);
+            var targetModal = document.getElementById(targetId);
+            if (targetModal) {
+                var modal = new bootstrap.Modal(targetModal);
+                modal.show();
+            }
+        });
+    });
+
+    // Manipula o formulário de edição de perfil
+    document.getElementById('edit-profile-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        var formData = {
+            name: document.getElementById('name').value,
+            phone: document.getElementById('phone').value
+        };
+
+        fetch('/minha-conta/atualizar-perfil', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert('Erro: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Ocorreu um erro ao atualizar o perfil');
+        });
+    });
+
+    // Manipula o formulário de adicionar endereço
+    document.getElementById('add-address-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        var formData = {
+            name: document.getElementById('address-name').value,
+            street: document.getElementById('street').value,
+            number: document.getElementById('number').value,
+            complement: document.getElementById('complement').value,
+            district: document.getElementById('district').value,
+            city: document.getElementById('city').value,
+            state: document.getElementById('state').value,
+            postal_code: document.getElementById('postal-code').value
+        };
+
+        fetch('/minha-conta/adicionar-endereco', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(formData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert('Erro: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Ocorreu um erro ao adicionar o endereço');
+        });
+    });
+});
+
+// Função para excluir endereço
+function deleteAddress(addressId) {
+    if (confirm('Tem certeza que deseja excluir este endereço?')) {
+        fetch(`/minha-conta/excluir-endereco/${addressId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert('Erro: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Ocorreu um erro ao excluir o endereço');
+        });
+    }
+}
+</script>
+{% endblock %} 

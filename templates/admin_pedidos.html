@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}Administrar Pedidos - Velvex{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <h1 class="mb-4">Administrar Pedidos</h1>
+    
+    {% if pedidos %}
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Usuário</th>
+                        <th>Data</th>
+                        <th>Total BRL</th>
+                        <th>Criptomoeda</th>
+                        <th>Valor Cripto</th>
+                        <th>Status</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pedido in pedidos %}
+                    <tr>
+                        <td>#{{ pedido.id }}</td>
+                        <td>{{ pedido.user.nome }}</td>
+                        <td>{{ pedido.data_criacao.strftime('%d/%m/%Y %H:%M') }}</td>
+                        <td>R$ {{ "%.2f"|format(pedido.total_brl) }}</td>
+                        <td>
+                            {% if pedido.cripto_moeda %}
+                                <span class="badge bg-primary">{{ pedido.cripto_moeda.upper() }}</span>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if pedido.cripto_valor %}
+                                {{ "%.8f"|format(pedido.cripto_valor) if pedido.cripto_moeda == 'bitcoin' else "%.6f"|format(pedido.cripto_valor) }} {{ pedido.cripto_moeda.upper() }}
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge {% if pedido.status == 'pago' %}bg-success{% elif pedido.status == 'pendente' %}bg-warning{% else %}bg-danger{% endif %}">
+                                {{ pedido.status.upper() }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if pedido.status == 'pendente' %}
+                                <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#modalConfirmar{{ pedido.id }}">
+                                    <i class="fas fa-check"></i> Confirmar Pagamento
+                                </button>
+                            {% elif pedido.status == 'pago' %}
+                                <span class="text-success">
+                                    <i class="fas fa-check-circle"></i> Confirmado
+                                    {% if pedido.hash_transacao %}
+                                        <br><small>Hash: {{ pedido.hash_transacao[:20] }}...</small>
+                                    {% endif %}
+                                </span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    
+                    <!-- Modal para confirmar pagamento -->
+                    {% if pedido.status == 'pendente' %}
+                    <div class="modal fade" id="modalConfirmar{{ pedido.id }}" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Confirmar Pagamento - Pedido #{{ pedido.id }}</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <form action="{{ url_for('confirmar_pagamento_admin', pedido_id=pedido.id) }}" method="POST">
+                                    <div class="modal-body">
+                                        <div class="mb-3">
+                                            <label class="form-label">Detalhes do Pedido:</label>
+                                            <ul class="list-unstyled">
+                                                <li><strong>Usuário:</strong> {{ pedido.user.nome }}</li>
+                                                <li><strong>Total:</strong> R$ {{ "%.2f"|format(pedido.total_brl) }}</li>
+                                                <li><strong>Criptomoeda:</strong> {{ pedido.cripto_moeda.upper() }}</li>
+                                                <li><strong>Valor esperado:</strong> {{ "%.8f"|format(pedido.cripto_valor) if pedido.cripto_moeda == 'bitcoin' else "%.6f"|format(pedido.cripto_valor) }} {{ pedido.cripto_moeda.upper() }}</li>
+                                                <li><strong>Endereço:</strong> <code>{{ pedido.cripto_endereco }}</code></li>
+                                            </ul>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="hash_transacao" class="form-label">Hash da Transação (opcional):</label>
+                                            <input type="text" class="form-control" id="hash_transacao" name="hash_transacao" placeholder="0x... ou txid...">
+                                            <div class="form-text">Cole aqui o hash/ID da transação para registro.</div>
+                                        </div>
+                                        <div class="alert alert-warning">
+                                            <i class="fas fa-exclamation-triangle"></i>
+                                            <strong>Atenção:</strong> Confirme apenas se você recebeu o pagamento na sua carteira.
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                        <button type="submit" class="btn btn-success">
+                                            <i class="fas fa-check"></i> Confirmar Recebimento
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i>
+            Nenhum pedido encontrado.
+        </div>
+    {% endif %}
+</div>
+{% endblock %} 

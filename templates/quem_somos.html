@@ -1,75 +1,137 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quem Somos - Velvex</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
-    <header class="site-header">
-        <div class="search-area">
-            <a href="#" id="openSearchPopup">Pesquisar</a>
-        </div>
-        <nav class="main-nav">
-            <a href="{{ url_for('home') }}">Início</a>
-            <a href="{{ url_for('loja_page') }}">Loja (Criar Anúncio)</a>
-            <a href="{{ url_for('anuncios_page') }}">Anuncios</a> 
-        </nav>
-        <div class="account-area">
-            {% if session.user_id %}
-                <a href="{{ url_for('minha_conta_page') }}">{{ session.user_nome }}</a>
-                {% if session.is_admin %}
-                    <a href="{{ url_for('admin_dashboard') }}" style="color: #ffc107;">Admin</a> 
-                {% endif %}
-                <a href="{{ url_for('logout') }}">Logout</a>
-            {% else %}
-                <a href="{{ url_for('login_page') }}">Minha Conta / Login</a>
-            {% endif %}
-        </div>
-    </header>
+{% extends "base.html" %}
 
-    <div class="info-page-container">
-        <aside class="info-sidebar">
-            <nav class="info-nav">
-                <ul>
-                    <li><a href="{{ url_for('quem_somos_page') }}" class="active">Quem Somos</a></li>
-                    <li><a href="{{ url_for('compre_page') }}">Compre na Velvex</a></li>
-                    <li><a href="{{ url_for('venda_page') }}">Venda na Velvex</a></li>
-                    <li><a href="{{ url_for('suporte_page') }}">Suporte</a></li>
-                    <li><a href="{{ url_for('termos_page') }}">Termo de Responsabilidade</a></li>
-                </ul>
-            </nav>
-        </aside>
-        <main class="info-content">
-            <h1>Quem Somos - Velvex</h1>
-            <p>Na Velvex, somos mais do que uma simples plataforma de revenda. Nascemos de uma paixão vibrante por este nicho e do desejo genuíno de torná-lo acessível a cada canto do Brasil. Acreditamos que todos merecem a oportunidade de encontrar, adquirir e compartilhar peças incríveis, e é por isso que construímos um espaço que reflete esse ideal.</p>
-            <p>Entendemos que o acesso a este mercado pode, muitas vezes, parecer restrito ou complicado. Por isso, nossa missão é clara: democratizar esse universo! Trabalhamos incansavelmente para oferecer a menor taxa do mercado, porque queremos que a sua paixão não seja limitada por barreiras financeiras. Aqui, o foco está em conectar pessoas e produtos, facilitando sonhos e descobertas.</p>
-            <p>A confiança é a base de tudo o que fazemos. Cada item que passa pela Velvex é cuidadosamente verificado por profissionais capacitados e dedicados, garantindo a tranquilidade que você precisa para comprar e vender. Essa atenção aos detalhes não é apenas um procedimento; é o nosso compromisso com a integridade e a satisfação da nossa comunidade.</p>
-            <p>Para nós, a Velvex é movida por um propósito maior. Sim, somos um negócio, mas o que realmente nos impulsiona é o amor por este nicho e pela comunidade que estamos construindo. Fazemos isso porque acreditamos no valor de cada peça, na história que ela carrega e na alegria que pode proporcionar. Queremos ser o ponto de encontro para entusiastas, colecionadores e para todos aqueles que estão apenas começando a explorar este mundo fascinante.</p>
-            <p>Seja bem-vindo(a) à Velvex! Explore, descubra, conecte-se. Estamos aqui para tornar sua jornada neste nicho a mais prazerosa, segura e acessível possível. Junte-se a nós e faça parte de uma comunidade que, assim como você, valoriza a autenticidade, a paixão e a oportunidade.</p>
-        </main>
+{% block title %}Quem Somos - Velvex{% endblock %}
+
+{% block head_content %}
+    <style>
+        .quem-somos-video-hero {
+            position: relative;
+            overflow: hidden;
+            height: 550px; /* Aumentada a altura para acomodar mais conteúdo */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            margin-bottom: 0;
+            
+            /* Adicionado para pegar a largura horizontal completa */
+            width: 100vw; /* Garante que o elemento ocupe 100% da largura do viewport */
+            position: relative; /* Mantém o posicionamento relativo */
+            left: 50%; /* Move o elemento para o centro do viewport */
+            transform: translateX(-50%); /* Move o elemento de volta pela metade de sua própria largura, centralizando-o */
+            margin-left: auto; /* Ajuda a centralizar em alguns layouts */
+            margin-right: auto; /* Ajuda a centralizar em alguns layouts */
+        }
+        .quem-somos-video-hero video {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            min-width: 100%;
+            min-height: 100%;
+            width: auto;
+            height: auto;
+            z-index: -1;
+            transform: translateX(-50%) translateY(-50%);
+            object-fit: cover;
+        }
+        .quem-somos-content-overlay {
+            /* ALTERAÇÃO: Ajustado o gradiente para ir para branco opaco no final */
+            background: linear-gradient(to bottom, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.4) 60%, rgba(255, 255, 255, 1) 100%); /* Changed last rgba to 1 for opaque white */
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 15px;
+            z-index: 1;
+            text-align: center;
+        }
+        .quem-somos-content-overlay h1 {
+            font-size: 3.5rem; /* Ajuste o tamanho do título principal */
+            text-shadow: 2px 2px 8px rgba(0,0,0,0.7); /* Sombra para o texto para melhor legibilidade */
+            margin-bottom: 1rem; /* Espaço abaixo do título principal */
+        }
+        .quem-somos-content-overlay p {
+            font-size: 1.8rem; /* Ajuste o tamanho do parágrafo */
+            text-shadow: 1px 1px 6px rgba(0,0,0,0.6); /* Sombra para o texto */
+            margin-bottom: 2rem; /* Espaço abaixo do parágrafo principal */
+        }
+        .quem-somos-content-overlay .historia-section {
+            max-width: 800px; /* Largura máxima para o texto da história */
+            margin-top: 2rem; /* Espaço acima da seção de história */
+            text-shadow: 1px 1px 4px rgba(0,0,0,0.8); /* Sombra para o texto da história */
+        }
+        .quem-somos-content-overlay .historia-section h2 {
+            font-size: 2.5rem; /* Tamanho do título da história */
+            margin-bottom: 1rem;
+        }
+        .quem-somos-content-overlay .historia-section p {
+            font-size: 1.1rem; /* Tamanho do texto da história */
+            line-height: 1.6;
+            color: white !important; /* Definido explicitamente para branco e usado !important para sobrescrever text-muted */
+        }
+        /* Outros estilos existentes */
+        .valores-list { list-style: none; padding: 0; }
+        .valores-list li { margin-bottom: 10px; font-size: 1.1em; }
+        .valor-icon { color: #007bff; font-weight: bold; margin-right: 8px; }
+    </style>
+{% endblock %}
+
+{% block content %}
+
+<div class="quem-somos-video-hero">
+    <video autoplay loop muted playsinline>
+        <source src="{{ url_for('static', filename='videos/cc.mp4') }}" type="video/mp4">
+        Seu navegador não suporta vídeos.
+    </video>
+    <div class="quem-somos-content-overlay">
+        <h1 class="display-4 fw-bold">Sobre a Velvex Marketplace</h1>
+        <p class="lead fs-3">Conectando apaixonados por moda.</p>
+
+        <div class="historia-section">
+            <h2 class="mb-4">Nossa História</h2>
+            <p class="lead text-muted">
+                Na Velvex, acreditamos que a moda é uma forma de expressão. Nascemos da paixão por sneakers, vestuário e acessórios que definem um estilo de vida. Nosso objetivo é criar uma comunidade onde todos possam comprar, vender itens autênticos com segurança e confiança.
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="container my-5">
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card h-100 p-4 border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <h3 class="card-title mb-3">Nossa Missão</h3>
+                    <p class="card-text">Simplificar a experiência de compra e venda de moda, garantindo autenticidade, transparência e uma plataforma amigável para todos os nossos usuários.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 mb-4">
+            <div class="card h-100 p-4 border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <h3 class="card-title mb-3">Nossos Valores</h3>
+                    <ul class="list-unstyled valores-list">
+                        <li><span class="valor-icon">✓</span> Autenticidade</li>
+                        <li><span class="valor-icon">✓</span> Comunidade</li>
+                        <li><span class="valor-icon">✓</span> Confiança</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <div id="searchPopup" class="search-popup-overlay">
-        <div class="search-popup-content">
-            <span class="close-popup" id="closeSearchPopup">&times;</span>
-            <h2>Pesquisar no Site</h2>
-            <form action="{{ url_for('search_results_page') }}" method="get" class="popup-search-form">
-                <input type="search" name="query_popup" placeholder="O que você procura?" aria-label="Campo de busca popup">
-                <button type="submit" class="btn-principal">Buscar</button>
-            </form>
-            <p style="font-size: 0.8em; color: #ccc; margin-top:15px;">(Busca nos anúncios do site.)</p>
+    <div class="row mt-5">
+        <div class="col-12 text-center bg-dark text-white p-5 rounded-3 shadow">
+            <h2 class="fw-bold">Faça Parte da Nossa Comunidade</h2>
+            <p class="lead my-3">Junte-se à Velvex e faça parte da próxima geração de compra e venda de moda!</p>
+            <a href="{{ url_for('criar_conta_page') }}" class="btn btn-primary btn-lg mt-3 fw-bold">Criar Minha Conta</a>
         </div>
     </div>
+</div>
 
-    <script>
-        const openSearchButton = document.getElementById('openSearchPopup');
-        const closeSearchButton = document.getElementById('closeSearchPopup');
-        const searchPopupOverlay = document.getElementById('searchPopup');
-        if(openSearchButton && searchPopupOverlay){openSearchButton.addEventListener('click', function(event){event.preventDefault();searchPopupOverlay.classList.add('active');});}
-        if(closeSearchButton && searchPopupOverlay){closeSearchButton.addEventListener('click', function(){searchPopupOverlay.classList.remove('active');});}
-        if(searchPopupOverlay){searchPopupOverlay.addEventListener('click', function(event){if(event.target === searchPopupOverlay){searchPopupOverlay.classList.remove('active');}});}
-    </script>
-</body>
-</html>
+{% endblock %}

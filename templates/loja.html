@@ -1,137 +1,143 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Criar Anúncio - Velvex</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
-    <header class="site-header">
-        <div class="search-area">
-            <a href="#" id="openSearchPopup">Pesquisar</a>
-        </div>
-        <nav class="main-nav">
-            <a href="{{ url_for('home') }}">Início</a>
-            <a href="{{ url_for('loja_page') }}">Loja (Criar Anúncio)</a>
-            <a href="{{ url_for('anuncios_page') }}">Anuncios</a> 
-        </nav>
-        <div class="account-area">
-            {% if session.user_id %}
-                <a href="{{ url_for('minha_conta_page') }}">{{ session.user_nome }}</a>
-                {% if session.is_admin %}
-                    <a href="{{ url_for('admin_dashboard') }}" class="admin-link">Admin</a> 
-                {% endif %}
-                <a href="{{ url_for('logout') }}">Logout</a>
-            {% else %}
-                <a href="{{ url_for('login_page') }}">Minha Conta / Login</a>
-            {% endif %}
-        </div>
-    </header>
+{% extends "base.html" %}
 
-    <main class="page-content-container loja-page">
-        {# Seção de vídeo de fundo para a página Loja #}
-        <div class="loja-header-video-section">
-            <video autoplay muted loop class="loja-background-video">
-                <source src="{{ url_for('static', filename='videos/bb.mp4') }}" type="video/mp4">
-                Seu navegador não suporta a tag de vídeo.
-            </video>
-            <div class="loja-header-content-overlay"> {# Overlay para o conteúdo sobre o vídeo #}
-                <h2>Crie seu Anúncio</h2>
-                <p>Preencha os detalhes do produto que deseja vender. Seu anúncio será revisado antes de ser publicado.</p>
+{% block title %}Vender Item - Velvex{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="row justify-content-center">
+        
+        <div class="col-lg-8 col-md-10">
+
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white text-center">
+                    <h3>Anunciar Novo Item</h3>
+                </div>
+                <div class="card-body p-3">
+                    <form action="{{ url_for('loja_page') }}" method="POST" enctype="multipart/form-data">
+                        
+                        <div class="mb-2">
+                            <label for="anuncio_titulo" class="form-label">Título do Anúncio <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control form-control-sm" id="anuncio_titulo" name="anuncio_titulo" required>
+                            <div class="form-text">Entre 5 e 100 caracteres.</div>
+                        </div>
+
+                        <div class="mb-2">
+                            <label for="anuncio_descricao" class="form-label">Descrição</label>
+                            <textarea class="form-control form-control-sm" id="anuncio_descricao" name="anuncio_descricao" placeholder="Comece a digitar..." maxlength="500"></textarea>
+                            <div class="form-text">Máximo de 500 caracteres.</div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-2">
+                                <label for="anuncio_categoria" class="form-label">Categoria <span class="text-danger">*</span></label>
+                                <select class="form-select form-select-sm" id="anuncio_categoria" name="anuncio_categoria" required>
+                                    <option value="" disabled selected>Selecione uma Categoria</option>
+                                    {% for categoria in categorias_form %}
+                                        <option value="{{ categoria.value }}">{{ categoria.label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <label for="anuncio_condicao" class="form-label">Condição <span class="text-danger">*</span></label>
+                                <select class="form-select form-select-sm" id="anuncio_condicao" name="anuncio_condicao" required>
+                                    <option value="" disabled selected>Selecione a Condição</option>
+                                    {% for condicao in condicoes_form %}
+                                        <option value="{{ condicao.value }}">{{ condicao.label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-2">
+                                <label for="tamanho_numerico" class="form-label">Tamanho Numérico (Calçados)</label>
+                                <select class="form-select form-select-sm" id="tamanho_numerico" name="tamanho_numerico">
+                                    <option value="">Não Aplicável / Selecione</option>
+                                    {% for i in range(34, 47) %}
+                                        <option value="{{ i }}">{{ i }}</option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">Para Tênis/Calçados.</div>
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <label for="tamanho_roupa" class="form-label">Tamanho de Roupa (P/M/G)</label>
+                                <select class="form-select form-select-sm" id="tamanho_roupa" name="tamanho_roupa">
+                                    <option value="">Não Aplicável / Selecione</option>
+                                    {% set tamanhos_roupa = ['P', 'M', 'G', 'GG', 'XG'] %}
+                                    {% for tamanho in tamanhos_roupa %}
+                                        <option value="{{ tamanho }}">{{ tamanho }}</option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">Para Vestuário.</div>
+                            </div>
+                        </div>
+
+                        <div class="mb-2">
+                            <label for="anuncio_marca" class="form-label">Marca do Produto</label>
+                            <input class="form-control form-control-sm" list="marcasOptions" id="anuncio_marca" name="anuncio_marca" placeholder="Digite para buscar ou selecione...">
+                            <datalist id="marcasOptions">
+                                <option value="">Não especificada</option>
+                                {% for marca in marcas_produtos %}
+                                    <option value="{{ marca }}"></option>
+                                {% endfor %}
+                            </datalist>
+                            <div class="form-text">Selecione a marca do seu produto.</div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-2">
+                                <label for="anuncio_preco" class="form-label">Preço (R$) <span class="text-danger">*</span></label>
+                                <input type="number" step="0.01" class="form-control form-control-sm" id="anuncio_preco" name="anuncio_preco" placeholder="Ex: 500.00" required>
+                                <div class="form-text">Use ponto para centavos (ex: 120.50).</div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="anuncio_imagens" class="form-label">Imagens do Produto <span class="text-danger">*</span></label>
+                            <input type="file" class="form-control form-control-sm" id="anuncio_imagens" name="anuncio_imagens" accept="image/jpeg,image/png,image/webp" multiple required>
+                            <div class="form-text">Mínimo 3 imagens do produto + tag. Formatos: JPG, PNG, WEBP.</div>
+                        </div>
+
+                        <div class="d-grid gap-2 mt-3">
+                            <button type="submit" class="btn btn-primary">Anunciar Item</button>
+                        </div>
+                    </form>
+                </div>
             </div>
-        </div>
-        <hr class="separator-line">
 
-
-        <section class="criar-anuncio-container">
-            <div class="anuncio-form-wrapper form-container">
-                {% with messages = get_flashed_messages(with_categories=true) %}
-                    {% if messages %}
-                        <ul class="flash-messages flash-messages_loja">
-                        {% for category, message in messages %}
-                            <li class="flash-message flash-{{ category }}">{{ message }}</li>
-                        {% endfor %}
-                        </ul>
-                    {% endif %}
-                {% endwith %}
-                
-                {# CORREÇÃO AQUI: action aponta para 'loja_page' #}
-                <form action="{{ url_for('loja_page') }}" method="post" class="user-form" id="formCriarAnuncio" enctype="multipart/form-data">
-                    {# CSRF Token pode ser adicionado manualmente se necessário #}
-                    <div class="form-group">
-                        <label for="anuncio_titulo">Título do Anúncio:</label>
-                        <input type="text" id="anuncio_titulo" name="anuncio_titulo" placeholder="Ex: Tênis Nike Air Max, Tamanho 40, Novo" value="{{ anuncio_titulo if anuncio_titulo is defined else '' }}" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="anuncio_descricao">Descrição Detalhada:</label>
-                        <textarea id="anuncio_descricao" name="anuncio_descricao" rows="5" placeholder="Descreva seu produto, condição, detalhes importantes..." required>{{ anuncio_descricao if anuncio_descricao is defined else '' }}</textarea>
-                    </div>
-                    <div class="form-group">
-                        <label for="anuncio_categoria">Categoria:</label>
-                        <select id="anuncio_categoria" name="anuncio_categoria" required>
-                            <option value="" disabled selected>Selecione uma categoria</option>
-                            {% for cat in categorias_form %}
-                            <option value="{{ cat.value }}" {% if anuncio_categoria is defined and anuncio_categoria == cat.value %}selected{% endif %}>{{ cat.label }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="anuncio_preco">Preço (R$):</label>
-                        <input type="number" id="anuncio_preco" name="anuncio_preco" placeholder="Ex: 299.90" step="0.01" min="0" value="{{ anuncio_preco if anuncio_preco is defined else '' }}" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="anuncio_condicao">Condição do Produto:</label>
-                        <select id="anuncio_condicao" name="anuncio_condicao" required>
-                            <option value="" disabled selected>Selecione a condição</option>
-                            {% for cond in condicoes_form %}
-                            <option value="{{ cond.value }}" {% if anuncio_condicao is defined and anuncio_condicao == cond.value %}selected{% endif %}>{{ cond.label }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="anuncio_imagens">Imagens do Produto (selecione uma ou mais):</label>
-                        <input type="file" id="anuncio_imagens" name="anuncio_imagens" accept="image/png, image/jpeg, image/webp" multiple>
-                        <small>Selecione uma ou mais imagens (JPG, PNG, JPEG, WEBP). Tamanho máx: 5MB por imagem.</small>
-                    </div>
-                    
-                    <button type="submit" class="btn-principal">Publicar Anúncio</button>
-                </form>
-            </div>
-        </section>
-    </main>
-
-    <footer class="site-footer-nav">
-        <nav>
-            <a href="{{ url_for('quem_somos_page') }}">Quem Somos</a>
-            <a href="{{ url_for('compre_page') }}">Como Comprar</a>
-            <a href="{{ url_for('venda_page') }}">Como Vender</a>
-            <a href="{{ url_for('suporte_page') }}">Suporte</a>
-            <a href="{{ url_for('termos_page') }}">Termos de Serviço</a>
-        </nav>
-    </footer>
-
-    {# Pop-ups (Search) #}
-    <div id="searchPopup" class="search-popup-overlay">
-        <div class="search-popup-content">
-            <span class="close-popup" id="closeSearchPopup">&times;</span>
-            <h2>Pesquisar no Site</h2>
-            <form action="{{ url_for('search_results_page') }}" method="get" class="popup-search-form">
-                <input type="search" name="query_popup" placeholder="O que você procura?" aria-label="Campo de busca popup">
-                <button type="submit" class="btn-principal">Buscar</button>
-            </form>
-            <p class="popup-info-text">(Busca nos anúncios do site.)</p>
         </div>
     </div>
+</div>
 
-    <script>
-        // Script do Pop-up de Busca (como nas outras páginas)
-        const openSearchButton = document.getElementById('openSearchPopup');
-        const closeSearchButton = document.getElementById('closeSearchPopup');
-        const searchPopupOverlay = document.getElementById('searchPopup');
-        if(openSearchButton && searchPopupOverlay){openSearchButton.addEventListener('click', function(event){event.preventDefault();searchPopupOverlay.classList.add('active');});}
-        if(closeSearchButton && searchPopupOverlay){closeSearchButton.addEventListener('click', function(){searchPopupOverlay.classList.remove('active');});}
-        if(searchPopupOverlay){searchPopupOverlay.addEventListener('click', function(event){if(event.target === searchPopupOverlay){searchPopupOverlay.classList.remove('active');}});}
-    </script>
-</body>
-</html>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Encontra o elemento da textarea pelo seu ID
+        const textarea = document.getElementById('anuncio_descricao');
+
+        // Função que ajusta a altura
+        function autoResize() {
+            this.style.height = 'auto'; // Primeiro, reseta a altura
+            this.style.height = (this.scrollHeight) + 'px'; // Depois, define a altura para a altura do conteúdo
+        }
+
+        // Adiciona um "ouvinte" que chama a função de ajuste sempre que o usuário digita algo
+        textarea.addEventListener('input', autoResize, false);
+
+        // Lógica para o campo de marca com datalist
+        const marcaInput = document.getElementById('anuncio_marca');
+        const marcasOptions = document.getElementById('marcasOptions');
+        const validMarcas = Array.from(marcasOptions.options).map(option => option.value).filter(Boolean); // Pega todas as marcas válidas do datalist
+
+        marcaInput.addEventListener('blur', function() {
+            const inputValue = this.value.trim();
+            if (inputValue !== "" && !validMarcas.includes(inputValue)) {
+                // Se o valor digitado não estiver na lista de marcas válidas e não for vazio, limpa o campo
+                this.value = "";
+                // Opcional: mostrar um feedback ao usuário que a marca digitada não é válida
+                // alert('A marca selecionada não é válida. Por favor, escolha uma da lista ou deixe em branco.');
+            }
+        });
+    });
+</script>
+
+{% endblock %}

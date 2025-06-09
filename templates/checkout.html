@@ -1,95 +1,141 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Finalizar Compra - Velvex</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
-    <header class="site-header">
-        <div class="search-area">
-            <a href="#" id="openSearchPopup">Pesquisar</a>
-        </div>
-        <nav class="main-nav">
-            <a href="{{ url_for('home') }}">Início</a>
-            <a href="{{ url_for('loja_page') }}">Loja (Criar Anúncio)</a>
-            <a href="{{ url_for('anuncios_page') }}">Anuncios</a> 
-        </nav>
-        <div class="account-area">
-            {% if session.user_id %}
-                <a href="{{ url_for('minha_conta_page') }}">{{ session.user_nome }}</a>
-                {% if session.is_admin %}
-                    <a href="{{ url_for('admin_dashboard') }}" class="admin-link">Admin</a> 
-                {% endif %}
-                <a href="{{ url_for('logout') }}">Logout</a>
-            {% else %}
-                <a href="{{ url_for('login_page') }}">Minha Conta / Login</a>
-            {% endif %}
-            {# Link do Carrinho no cabeçalho #}
-            <a href="{{ url_for('carrinho_page') }}" class="cart-link">🛒 Carrinho</a>
-        </div>
-    </header>
+{% extends "base.html" %}
 
-    <main class="page-content-container">
-        <h2 class="section-title">Finalizar Compra</h2>
+{% block title %}Checkout - Velvex{% endblock %}
 
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                <ul class="flash-messages">
-                {% for category, message in messages %}
-                    <li class="flash-message flash-{{ category }}">{{ message }}</li>
-                {% endfor %}
-                </ul>
-            {% endif %}
-        {% endwith %}
+{% block content %}
+<h2 class="mb-4">Finalizar Compra</h2>
 
-        {% if itens_carrinho %}
-            <div class="checkout-summary-box form-container"> {# Mantém form-container para estilos de caixa #}
-                <h3>Resumo do Pedido</h3>
-                <ul class="checkout-item-list">
-                    {% for item in itens_carrinho %}
-                    <li>
-                        <span class="item-name">{{ item.anuncio.titulo }}</span>
-                        <span class="item-qty">x{{ item.quantidade }}</span>
-                        <span class="item-price">R$ {{ "%.2f"|format(item.anuncio.preco * item.quantidade|float) }}</span>
-                    </li>
-                    {% endfor %}
-                </ul>
-                <hr class="separator-line">
-                <p class="checkout-total"><strong>Total a Pagar: R$ {{ "%.2f"|format(total_carrinho) }}</strong></p>
-                
-                <p class="checkout-info-text">
-                    Esta é uma página de exemplo. A integração com um gateway de pagamento (como PayPal, Stripe, PagSeguro) seria feita aqui.
-                </p>
-                <button type="button" class="btn-principal" onclick="alert('Funcionalidade de pagamento não implementada! 😉');">Prosseguir para o Pagamento</button>
-                <a href="{{ url_for('carrinho_page') }}" class="btn-secondary-inverted">Voltar ao Carrinho</a> {# NOVA CLASSE DE BOTÃO SECUNDÁRIO #}
+{% if itens_carrinho %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Resumo do Pedido</h5>
             </div>
-        {% else %}
-            <p class="no-ads-message">Não há itens para finalizar a compra.</p>
-        {% endif %}
-    </main>
+            <div class="card-body">
+                <h5 class="card-title">Itens no Pedido:</h5>
+                <div class="table-responsive mb-4">
+                    <table class="table align-middle">
+                        <thead>
+                            <tr>
+                                <th>Produto</th>
+                                <th>Preço Unitário</th>
+                                <th>Quantidade</th>
+                                <th>Frete</th>
+                                <th>Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for item in itens_carrinho %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        {% set imagens_list = item.anuncio.imagens_nomes.split(',') if item.anuncio.imagens_nomes else [] %}
+                                        {% if imagens_list %}
+                                            <img src="{{ url_for('static', filename='uploads/anuncios/' + imagens_list[0].strip()) }}" alt="{{ item.anuncio.titulo }}" class="img-thumbnail me-2" style="width: 60px; height: 60px; object-fit: cover;">
+                                        {% else %}
+                                            <img src="{{ url_for('static', filename='img/placeholder.jpg') }}" alt="Sem imagem" class="img-thumbnail me-2" style="width: 60px; height: 60px; object-fit: cover;">
+                                        {% endif %}
+                                        <div>
+                                            <strong>{{ item.anuncio.titulo }}</strong>
+                                            <br><small class="text-muted">Vendedor: {{ item.anuncio.autor.nome }}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>R$ {{ "%.2f"|format(item.anuncio.preco) }}</td>
+                                <td>{{ item.quantidade }}</td>
+                                <td>
+                                    {% if item.frete_valor is not none %}
+                                        <span class="badge bg-success">{{ item.frete_servico }}</span><br>
+                                        <span class="text-muted">Prazo: {{ item.frete_prazo }} dias</span><br>
+                                        <span>R$ {{ "%.2f"|format(item.frete_valor) }}</span>
+                                    {% else %}
+                                        <span class="text-danger">Não selecionado</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <strong>R$ {{ "%.2f"|format(item.anuncio.preco * item.quantidade + (item.frete_valor or 0)) }}</strong>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
 
-    {# Pop-up de Busca (Search Popup) #}
-    <div id="searchPopup" class="search-popup-overlay">
-        <div class="search-popup-content">
-            <span class="close-popup" id="closeSearchPopup">&times;</span>
-            <h2>Pesquisar no Site</h2>
-            <form action="{{ url_for('search_results_page') }}" method="get" class="popup-search-form">
-                <input type="search" name="query_popup" placeholder="O que você procura?" aria-label="Campo de busca popup">
-                <button type="submit" class="btn-principal">Buscar</button>
-            </form>
-            <p class="popup-info-text">(Busca nos anúncios do site.)</p>
+                <h5 class="card-title mt-4">Resumo Financeiro:</h5>
+                <ul class="list-group list-group-flush mb-3">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Subtotal dos produtos:
+                        <span>R$ {{ "%.2f"|format(total_carrinho) }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Total dos fretes:
+                        <span>R$ {{ "%.2f"|format(total_frete) }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Taxa de Autenticidade:
+                        <span>R$ {{ "%.2f"|format(taxa_autenticidade) }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center fw-bold fs-5">
+                        Total a Pagar:
+                        <span>R$ {{ "%.2f"|format(total_geral - taxa_intermediacao) }}</span>
+                    </li>
+                </ul>
+
+                {% if not todos_fretes_selecionados %}
+                <div class="alert alert-warning text-center" role="alert">
+                    ⚠️ Você precisa calcular e selecionar o frete para todos os itens antes de prosseguir.
+                    <br><a href="{{ url_for('carrinho_page') }}" class="btn btn-warning mt-2">Voltar ao Carrinho</a>
+                </div>
+                {% endif %}
+
+                <div class="alert alert-info text-center" role="alert">
+                    <strong>Informações de Envio:</strong>
+                    <p class="mb-1">O processo de envio ocorre em duas etapas, e o valor do frete já inclui ambas.</p>
+                </div>
+
+                <div class="d-grid gap-2 mt-4">
+                    {% if todos_fretes_selecionados %}
+                        {% if preference_id and mercado_pago_public_key %}
+                            <!-- Botão Mercado Pago -->
+                            <div id="mercado-pago-btn"></div>
+                            <script src="https://sdk.mercadopago.com/js/v2"></script>
+                            <script>
+                                const mp = new MercadoPago("{{ mercado_pago_public_key }}", {locale: 'pt-BR'});
+                                mp.bricks().create("wallet", "mercado-pago-btn", {
+                                    initialization: {
+                                        preferenceId: "{{ preference_id }}"
+                                    },
+                                    customization: {
+                                        texts: {
+                                            valueProp: 'smart_option',
+                                        }
+                                    },
+                                    callbacks: {
+                                        onError: (error) => alert('Erro ao iniciar pagamento: ' + error.message)
+                                    }
+                                });
+                            </script>
+                        {% endif %}
+                        <!-- Pagamento em Cripto -->
+                        <a href="{{ url_for('pagamento_cripto', moeda='bitcoin') }}" class="btn btn-dark btn-lg mt-2">
+                            <i class="fab fa-btc"></i> Pagar com Bitcoin
+                        </a>
+                    {% else %}
+                        <button type="button" class="btn btn-success btn-lg" disabled>
+                            Prosseguir para Pagamento
+                        </button>
+                    {% endif %}
+                    <a href="{{ url_for('carrinho_page') }}" class="btn btn-outline-secondary btn-lg">Voltar ao Carrinho</a>
+                </div>
+            </div>
         </div>
     </div>
-    <script>
-        // Script do Pop-up de Busca (como nas outras páginas)
-        const openSearchButton = document.getElementById('openSearchPopup');
-        const closeSearchButton = document.getElementById('closeSearchPopup');
-        const searchPopupOverlay = document.getElementById('searchPopup');
-        if(openSearchButton && searchPopupOverlay){openSearchButton.addEventListener('click', function(event){event.preventDefault();searchPopupOverlay.classList.add('active');});}
-        if(closeSearchButton && searchPopupOverlay){closeSearchButton.addEventListener('click', function(){searchPopupOverlay.classList.remove('active');});}
-        if(searchPopupOverlay){searchPopupOverlay.addEventListener('click', function(event){if(event.target === searchPopupOverlay){searchPopupOverlay.classList.remove('active');}});}
-    </script>
-</body>
-</html>
+</div>
+{% else %}
+<div class="alert alert-info text-center" role="alert">
+    Seu carrinho está vazio ou ocorreu um problema no checkout.
+    <br><a href="{{ url_for('anuncios_page') }}" class="btn btn-info text-white mt-2">Voltar aos Anúncios</a>
+</div>
+{% endif %}
+{% endblock %}
