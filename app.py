@@ -5,15 +5,16 @@ import json
 from datetime import datetime, timedelta
 from functools import wraps
 from markupsafe import escape, Markup
+from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
 
 from flask import (Flask, flash, redirect, render_template, request, session,
-                   url_for, jsonify)
+                   url_for, jsonify, send_file)
 
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import or_
-from sqlalchemy.orm import joinedload
-from werkzeug.security import check_password_hash, generate_password_hash
-from werkzeug.utils import secure_filename
+from sqlalchemy.orm import joinedload # Importar joinedload
+
 import mercadopago
 from mercadopago.config import RequestOptions
 from web3 import Web3
@@ -67,6 +68,7 @@ class User(db.Model):
     sent_messages = db.relationship('Message', foreign_keys='Message.sender_id', backref='sender', lazy=True, cascade="all, delete-orphan")
     strike_logs = db.relationship('StrikeLog', backref='user', lazy=True, cascade="all, delete-orphan")
     favoritos = db.relationship('Favorito', backref='user', lazy=True, cascade="all, delete-orphan")
+    pedidos = db.relationship('Pedido', backref='comprador', lazy='select', cascade="all, delete-orphan") # Renomeado para 'comprador'
 
 class Anuncio(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -91,6 +93,7 @@ class Anuncio(db.Model):
     messages = db.relationship('Message', backref='anuncio', lazy=True, cascade="all, delete-orphan")
     strike_logs = db.relationship('StrikeLog', backref='anuncio', lazy=True, cascade="all, delete-orphan")
     favoritado_por = db.relationship('Favorito', backref='anuncio', lazy=True, cascade="all, delete-orphan")
+    itens_pedido_associados = db.relationship('ItemPedido', backref='anuncio', lazy='dynamic', cascade="all, delete-orphan") # Nova relação
 
 class Favorito(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -155,7 +158,20 @@ class Pedido(db.Model):
     data_pagamento = db.Column(db.DateTime, nullable=True)
     hash_transacao = db.Column(db.String(100), nullable=True)
     
-    user = db.relationship('User', backref='pedidos')
+    # Ajustando o relacionamento para usar lazy='select'
+    itens_pedido = db.relationship('ItemPedido', backref='pedido', lazy='select', cascade="all, delete-orphan")
+
+# NOVO MODELO: ItemPedido
+class ItemPedido(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    pedido_id = db.Column(db.Integer, db.ForeignKey('pedido.id'), nullable=False)
+    anuncio_id = db.Column(db.Integer, db.ForeignKey('anuncio.id'), nullable=False)
+    quantidade = db.Column(db.Integer, nullable=False)
+    preco_unitario = db.Column(db.Float, nullable=False) # Preço do item no momento da compra
+    frete_servico = db.Column(db.String(100), nullable=True)
+    frete_valor = db.Column(db.Float, nullable=True)
+    frete_prazo = db.Column(db.Integer, nullable=True)
+
 
 # --- 4. DECORADORES E PROCESSADORES DE CONTEXTO ---
 def login_required(f):
@@ -207,9 +223,56 @@ def build_pagination_args(page_num):
     return args
 
 # --- 5. CONSTANTES GLOBAIS E DADOS DE FORMULÁRIO ---
-INTERMEDIARY_CEP = "12916-150"
-MELHOR_ENVIO_API_TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiI5NTYiLCJqdGkiOiIyNGUwYjVhMTE0YzYyNDBlZGVlYWIxM2NiOTUyY2ZlMmExNTUxZjE0YWI2YjgxYmE5ZTMzMzlhY2FlZTRiZjQ0YjhhNWM5MjAzNmZiMjUxOSIsImlhdCI6MTc0OTQxMDIwNS4yMzE0MDksIm5iZiI6MTc0OTQxMDIwNS4yMzE0MTEsImV4cCI6MTc4MDk0NjIwNS4yMjE4NjQsInN1YiI6IjlmMWEyYTI0LWQxOGItNDE4MC1iMzE5LTNiZTRmM2E0OWYzNSIsInNjb3BlcyI6WyJzaGlwcGluZy1jYWxjdWxhdGUiLCJlY29tbWVyY2Utc2hpcHBpbmciXX0.tbBWYXrfkycdb5P81BWsKFKNJe7VfRBFEZWs93WjKwW7huOrPyrdHpREzhrDjDNce2xsp_6HCzO1qEfwr0wz0CZ4tc9KcTIucE4Z3ceaU0VidRWx8OIDIUkRKwICMN3ECy4tUMUSOGiHOfUBiybF2HYuUeKq50zT0fzHjNlQT9DgxkODA07glAzPheM0UPvU_ONTt9r4AkTn4RvASaLhb7qK5IbYwHnER1AP6aZRl7CzY0sj456WrOW25Y1eLSAZqCOuTGSAmlck9sq6Hlcd9qiQ1Q5_hSMCMzvdVZ9cK2UOWiBe6bxDP7TlH6CdcM5qHol1tCUG8NQgTyr0Pk0ZIYk5j_ELnGbU3aO-NBMxWCUuAkIknoI2lnTJE2gCcXI3vrKGCrT8YP31lPbN2F5k5QLIms5uSHysQH1EgXigqyGUEheA0nNqcD9-JaJgbszXjl9HonV2vhISNkere_OErxdV-5Zqe4o8KARyrpcNtUl1fEWx_h_FJYzVDPdeqmLJ6UNkY9QxpzAxQk0R4-DL-sQOIriE0rCR5kHaOfimlhEN1jXvPZFY9BZg73El0Ej7qIrHkVuKHvbuYQR1K2ESQzKWUtsTIFeWdVePANLtw9rk16aXcZ5G4hsM12wynUPZ1mpEpgYsubZDKSDiZJ1_-WKwUzeBYHNq-fEzFoGPc5A"
-MELHOR_ENVIO_API_URL = "https://sandbox.melhorenvio.com.br/api/v2/me/shipment/calculate"
+INTERMEDIARY_CEP = "01001000"  # CEP do centro de distribuição
+MELHOR_ENVIO_API_TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiIxIiwianRpIjoiODM1M2U5ZGNkMDhhYTE3NTRlOTQ4ZmE3NDZjNzFmZmQ2NjZjYWE1NWM2N2NkNTcwNzlmN2MzYzdjOWQ2ZDc4NTQ4MzNmNTg5MzFmZjhlNzAiLCJpYXQiOjE3NDk0OTg1NzAuMTI4ODU4LCJuYmYiOjE3NDk0OTg1NzAuMTI4ODU5LCJleHAiOjE3ODEwMzQ1NzAuMTE0NjA1LCJzdWIiOiI5ZjE5YTg0ZS1jNTY4LTQ3ZGYtYTM5Ny04NjEyZTk1YzdlOTAiLCJzY29wZXMiOlsiY2FydC13cml0ZSIsImNhcnQtcmVhZCIsInNoaXBwaW5nLWNhbGN1bGF0ZSIsInNoaXBwaW5nLWNhbmNlbCIsInNoaXBwaW5nLWNoZWNrb3V0Iiwic2hpcHBpbmctZ2VuZXJhdGUiLCJlY29tbWVyY2Utc2hpcHBpbmciLCJzaGlwcGluZy10cmFja2luZyJdfQ.R6QO4uwMXqQ8A7cCGcFnz20OtA8DpB97Bx0p6kkXBQHCKCMhTC7MdlxBFKjJBLt4EEFeVQfvUo6Ax2hayAz-PfsvTNdmuky4_tnkDjDKxeCa6Y8J8sOWtf0_W-sHLjj2vqiR84wQ9MUtFJ5MAS642dPLH_AnxmtTxgggfO6kSO_PPQGpsW7jwyxpKZK_MnMG_JUk-kSc6FE-ptEfP6kyHIJBdwUhcLTVPOxPz5q4SCTlVsYV8BNEu_iWUT6K3jJn3zt9zl1jgT2KMg3si41LjTrfzheQlJ0Qv9r7BuYXScffq39wvPdQQDJ69BLJQ6B7BiBDsm1XDe0p6a_HW6IwQb-EzoqgD-EAkEvcmUQXOkc8DMQ8osEvXmoXRjpJoW_TDHXll0F7oeGw_9KR0u4WKxN7kIYObRjlVCfH5cojMAq5iToZc79CzFmpxdAP1f2dQRLsoIQ3ZOHgowSF1b70E8oS6c3sAT7XMDWYzG5kwnNYKPS4dTWsoCXiGWe0_oNaDfetpKm_R47bFL_1GlCzUGIHqgPTkBq2RvmAoHNY5dIgbz2C51SYPhK-A2LTmZMGWZcj7YO4yjssHXsE0h5RPYw33CE31yWpPTPLaylGGVP1OWtxSJTS4q9yjkn8tu8sFnzOHIAiSGq3htfNlY1u1Myn1BxeWujWW-OVV4XLPOI"
+
+import os
+import requests
+from flask import request, send_file, jsonify
+
+MELHOR_ENVIO_API_URL_CALCULAR = "https://www.melhorenvio.com.br/api/v2/me/shipment/calculate"
+MELHOR_ENVIO_API_URL = "https://www.melhorenvio.com.br/api/v2/shipment"
+
+@app.route('/emitir-etiqueta', methods=['POST'])
+def emitir_etiqueta():
+    dados_envio = request.json  # Receba os dados do envio via JSON
+
+    headers = {
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {MELHOR_ENVIO_API_TOKEN}",
+        "User-Agent": "Velvex App (contato@velvex.com)"
+    }
+
+    # 1. Criar envio (enviar como lista)
+    if not isinstance(dados_envio, list):
+        dados_envio = [dados_envio]
+    resp = requests.post(MELHOR_ENVIO_API_URL, headers=headers, json=dados_envio)
+    if resp.status_code != 200:
+        return jsonify({"erro": "Erro ao criar envio", "detalhe": resp.text}), 400
+
+    envio = resp.json()[0]  # O retorno é uma lista
+    shipment_id = envio['id']
+
+    # 2. Pagar envio
+    pay_url = f"{MELHOR_ENVIO_API_URL}/{shipment_id}/pay"
+    resp_pay = requests.post(pay_url, headers=headers)
+    if resp_pay.status_code != 200:
+        return jsonify({"erro": "Erro ao pagar envio", "detalhe": resp_pay.text}), 400
+
+    # 3. Baixar etiqueta
+    print_url = f"{MELHOR_ENVIO_API_URL}/{shipment_id}/print"
+    headers_pdf = headers.copy()
+    headers_pdf["Accept"] = "application/pdf"
+    resp_pdf = requests.get(print_url, headers=headers_pdf)
+    if resp_pdf.status_code != 200:
+        return jsonify({"erro": "Erro ao baixar etiqueta", "detalhe": resp_pdf.text}), 400
+
+    # Salva o PDF temporariamente e envia para download
+    file_path = f"etiqueta_{shipment_id}.pdf"
+    with open(file_path, "wb") as f:
+        f.write(resp_pdf.content)
+    return send_file(file_path, as_attachment=True)
 
 # Configuração do Mercado Pago
 MERCADO_PAGO_ACCESS_TOKEN = "TEST-5821472335048864-060815-3ebd6b8105be6d4a5538a87e2116c7ba-1595074859"
@@ -307,7 +370,7 @@ def contains_forbidden_info(text):
     if any(keyword in text_lower for keyword in forbidden_keywords): return True
     
     offensive_words = ['bosta', 'merda', 'caralho', 'puta', 'puto', 'foda-se', 'desgraça', 'cuzão', 'arrombado', 'viado', 'idiota', 'imbecil', 'otário', 'burro', 'vagabundo', 'golpe', 'fraude', 'ladrão']
-    if any(re.search(r'\b' + word + r'\b', text_lower) for word in offensive_words): return True
+    if any(re.search(r'\b' + word + r'\b', text_lower) for keyword in offensive_words): return True
     
     return False
 
@@ -341,10 +404,21 @@ def calcular_frete_melhor_envio(cep_origem, cep_destino, anuncio):
     }
 
     try:
-        response = requests.post(MELHOR_ENVIO_API_URL, headers=headers, json=payload, timeout=10)
+        # Usar a URL de cálculo de frete
+        response = requests.post(MELHOR_ENVIO_API_URL_CALCULAR, headers=headers, json=payload, timeout=10)
         response.raise_for_status() 
         data = response.json()
-        return [opt for opt in data if 'error' not in opt]
+        
+        # Filtra apenas os serviços desejados
+        servicos_permitidos = ['SEDEX', '.Package', '.Com']
+        opcoes_filtradas = []
+        
+        for opt in data:
+            if 'error' not in opt and any(servico in opt.get('name', '') for servico in servicos_permitidos):
+                opcoes_filtradas.append(opt)
+                
+        return opcoes_filtradas
+        
     except requests.exceptions.RequestException as e:
         print(f"Erro na requisição para Melhor Envio: {e}")
         if hasattr(e, 'response') and e.response is not None:
@@ -492,7 +566,11 @@ def criar_conta_page():
             erros = True
             
         if erros:
-            return render_template('criar_conta.html', **form_data)
+            return render_template('criar_conta.html', **form_data, email_criar=form_data['email_criar']) # Passar email_criar de volta
+        
+        # Hash da senha aqui
+        senha_hash = generate_password_hash(form_data['senha_criar'], method='pbkdf2:sha256')
+
 
         novo_usuario = User(
             nome=form_data['nome'],
@@ -500,7 +578,7 @@ def criar_conta_page():
             email=form_data['email_criar'],
             endereco=form_data['endereco'],
             cep=cep_limpo_para_validacao,
-            senha_hash=generate_password_hash(form_data['senha_criar'], method='pbkdf2:sha256'),
+            senha_hash=senha_hash,
             is_admin=not bool(User.query.first())
         )
         db.session.add(novo_usuario)
@@ -579,18 +657,13 @@ def minha_conta_page():
         Oferta.data_oferta.desc()
     ).paginate(page=ofertas_f_page, per_page=5, error_out=False)
     
-    # Buscar minhas vendas (pedidos pagos onde o usuário é vendedor)
-    # Por enquanto, vamos mostrar todos os pedidos pagos do sistema
-    # Em uma implementação futura, seria melhor ter uma relação direta entre Pedido e Anuncio
-    minhas_vendas = Pedido.query.filter(
-        Pedido.status == 'pago'
-    ).order_by(Pedido.data_pagamento.desc()).limit(10).all()
+    # Minhas Vendas (agora filtrando corretamente os pedidos onde o usuário é o vendedor de algum item)
+    minhas_vendas_pedidos = Pedido.query.join(ItemPedido).join(Anuncio).filter(
+        Anuncio.user_id == user.id # Filtra pedidos que contêm anúncios do vendedor atual
+    ).distinct().all()
     
-    # Buscar minhas compras (pedidos pagos onde o usuário é comprador)
-    minhas_compras = Pedido.query.filter_by(
-        user_id=user.id,
-        status='pago'
-    ).order_by(Pedido.data_pagamento.desc()).all()
+    # Minhas Compras (já estava carregando pedidos do usuário como comprador)
+    minhas_compras_pedidos = Pedido.query.filter_by(user_id=user.id).all()
     
     return render_template('minha_conta.html', 
                          user=user,
@@ -598,8 +671,8 @@ def minha_conta_page():
                          meus_anuncios=meus_anuncios,
                          ofertas_recebidas_paginadas=ofertas_recebidas_paginadas,
                          ofertas_feitas_paginadas=ofertas_feitas_paginadas,
-                         minhas_vendas=minhas_vendas,
-                         minhas_compras=minhas_compras,
+                         minhas_vendas=minhas_vendas_pedidos,
+                         minhas_compras=minhas_compras_pedidos,
                          favoritos_search_query=favoritos_search_query,
                          anuncios_search_query=anuncios_search_query)
 
@@ -723,25 +796,42 @@ def anuncios_page():
 @app.route('/anuncio/<int:anuncio_id>')
 def detalhes_anuncio_page(anuncio_id):
     anuncio = Anuncio.query.get_or_404(anuncio_id)
+    autor = User.query.get(anuncio.user_id)
+    
+    # Verifica se o autor existe e tem CEP
+    if not autor or not autor.cep:
+        flash('O vendedor não possui CEP cadastrado. Não será possível calcular o frete.', 'warning')
+    
+    # Adiciona o autor ao objeto anuncio
+    anuncio.autor = autor
+    
+    # Busca outros anúncios do mesmo vendedor
+    other_seller_ads = Anuncio.query.filter(
+        Anuncio.user_id == anuncio.user_id,
+        Anuncio.id != anuncio_id
+    ).limit(4).all()
+    
+    # Busca ofertas recebidas para este anúncio
+    ofertas = Oferta.query.filter_by(anuncio_id=anuncio_id).all()
+    
+    # Verifica se o anúncio está nos favoritos do usuário
     is_favorito = False
     if 'user_id' in session:
-        is_favorito = Favorito.query.filter_by(user_id=session['user_id'], anuncio_id=anuncio_id).first() is not None
-
-    ofertas = []
-    if 'user_id' in session and session['user_id'] == anuncio.user_id:
-        ofertas = anuncio.ofertas.order_by(Oferta.data_oferta.desc()).all()
-
-    other_seller_ads = Anuncio.query.filter(
-        Anuncio.user_id == anuncio.user_id, Anuncio.id != anuncio_id, Anuncio.status == 'aprovado'
-    ).order_by(Anuncio.id.desc()).limit(8).all()
-
-    has_more_seller_ads = Anuncio.query.filter(
-        Anuncio.user_id == anuncio.user_id, Anuncio.id != anuncio_id, Anuncio.status == 'aprovado'
-    ).count() > 8
+        favorito = Favorito.query.filter_by(
+            user_id=session['user_id'],
+            anuncio_id=anuncio_id
+        ).first()
+        is_favorito = favorito is not None
+    
+    # Verifica se o anúncio tem as dimensões necessárias
+    if not all([anuncio.largura, anuncio.altura, anuncio.comprimento, anuncio.peso]):
+        flash('O anúncio não possui todas as dimensões necessárias para cálculo do frete. Por favor, edite o anúncio e adicione as dimensões.', 'warning')
 
     return render_template('detalhes_anuncio.html',
-                           anuncio=anuncio, is_favorito=is_favorito, ofertas=ofertas,
-                           other_seller_ads=other_seller_ads, has_more_seller_ads=has_more_seller_ads)
+                         anuncio=anuncio,
+                         other_seller_ads=other_seller_ads,
+                         ofertas=ofertas,
+                         is_favorito=is_favorito)
 
 @app.route('/anuncios-do-vendedor/<int:user_id>')
 def anuncios_do_vendedor_page(user_id):
@@ -778,7 +868,7 @@ def editar_anuncio_action(anuncio_id):
         
         if novo_preco < preco_antigo:
             for favorito in anuncio.favoritado_por:
-                if favorito.user_id != anuncio.user_id:
+                if favorito.user_id != anuncio.user_id: # Only notify if not the seller
                     db.session.add(Notification(
                         user_id=favorito.user_id,
                         message=f'Alerta de Preço! O item "{anuncio.titulo}" que você favoritou baixou para R$ {novo_preco:.2f}.',
@@ -882,9 +972,9 @@ def carrinho_page():
     
     # Calcular taxas adicionais
     taxa_autenticidade = 20.00  # R$ 20,00 pela verificação de autenticidade
-    taxa_intermediacao = total_carrinho * 0.10  # 10% do valor dos produtos pela intermediação
+    # taxa_intermediacao removida
     
-    total_geral = total_carrinho + total_frete + taxa_autenticidade + taxa_intermediacao
+    total_geral = total_carrinho + total_frete + taxa_autenticidade
     todos_fretes_selecionados = all(item.frete_valor is not None for item in itens_carrinho)
     
     return render_template('carrinho.html', 
@@ -893,7 +983,6 @@ def carrinho_page():
                          total_frete=total_frete, 
                          total_geral=total_geral,
                          taxa_autenticidade=taxa_autenticidade,
-                         taxa_intermediacao=taxa_intermediacao,
                          todos_fretes_selecionados=todos_fretes_selecionados)
 
 @app.route('/checkout')
@@ -909,7 +998,7 @@ def checkout_page():
     
     # Calcular taxas adicionais
     taxa_autenticidade = 20.00  # R$ 20,00 pela verificação de autenticidade
-    # taxa_intermediacao = total_carrinho * 0.10  # Removido do cálculo
+    # taxa_intermediacao removida
     
     total_geral = total_carrinho + total_frete + taxa_autenticidade
     todos_fretes_selecionados = all(item.frete_valor is not None for item in itens_carrinho)
@@ -925,23 +1014,23 @@ def checkout_page():
     try:
         print("Iniciando criação da preferência de pagamento...")
         
-        # Primeiro, vamos verificar a conta
-        try:
-            account_info = mp.merchant_order().get_all()
-            print(f"Informações da conta: {account_info}")
-        except Exception as e:
-            print(f"Erro ao verificar conta: {str(e)}")
+        # Primeiro, vamos verificar a conta (apenas para debug)
+        # try:
+        #     account_info = mp.merchant_order().get_all()
+        #     print(f"Informações da conta: {account_info}")
+        # except Exception as e:
+        #     print(f"Erro ao verificar conta: {str(e)}")
         
         # Configuração básica da preferência
         preference_data = {
             "items": [
                 {
-                    "id": str(item.id),
+                    "id": str(item.anuncio.id), # Usar anuncio.id
                     "title": item.anuncio.titulo,
                     "quantity": item.quantidade,
                     "currency_id": "BRL",
                     "unit_price": float(item.anuncio.preco),
-                    "description": f"Frete: {item.frete_servico} - {item.frete_prazo} dias"
+                    "description": f"Frete: {item.frete_servico or 'Não selecionado'} - {item.frete_prazo or '0'} dias" # Usar item.frete_servico
                 } for item in itens_carrinho
             ],
             "shipments": {
@@ -989,15 +1078,15 @@ def checkout_page():
             print(f"Init Point: {init_point}")
             print(f"Sandbox Init Point: {sandbox_init_point}")
             
-            # Verificar métodos de pagamento disponíveis
-            payment_methods = preference_response["response"].get("payment_methods", {})
-            print(f"Métodos de pagamento disponíveis: {payment_methods}")
+            # Verificar métodos de pagamento disponíveis (para debug)
+            # payment_methods = preference_response["response"].get("payment_methods", {})
+            # print(f"Métodos de pagamento disponíveis: {payment_methods}")
             
-            # Verificar se o PIX está disponível
-            if "excluded_payment_types" in payment_methods:
-                print(f"Tipos de pagamento excluídos: {payment_methods['excluded_payment_types']}")
-            if "excluded_payment_methods" in payment_methods:
-                print(f"Métodos de pagamento excluídos: {payment_methods['excluded_payment_methods']}")
+            # Verificar se o PIX está disponível (para debug)
+            # if "excluded_payment_types" in payment_methods:
+            #     print(f"Tipos de pagamento excluídos: {payment_methods['excluded_payment_types']}")
+            # if "excluded_payment_methods" in payment_methods:
+            #     print(f"Métodos de pagamento excluídos: {payment_methods['excluded_payment_methods']}")
             
         else:
             print(f"Erro na resposta do Mercado Pago: {preference_response}")
@@ -1016,7 +1105,6 @@ def checkout_page():
                          total_frete=total_frete, 
                          total_geral=total_geral,
                          taxa_autenticidade=taxa_autenticidade,
-                         taxa_intermediacao=0,
                          todos_fretes_selecionados=todos_fretes_selecionados,
                          preference_id=preference_id,
                          mercado_pago_public_key=MERCADO_PAGO_PUBLIC_KEY,
@@ -1096,63 +1184,106 @@ def confirmar_pagamento_cripto(moeda):
         total_geral = total_carrinho + total_frete + taxa_autenticidade + taxa_intermediacao
         valor_cripto = calcular_valor_cripto(total_geral, moeda)
         
-        # Criar pedido
+        # Criar pedido (status 'pendente' inicialmente)
         pedido = Pedido(
             user_id=session['user_id'],
             total_brl=total_geral,
             cripto_moeda=moeda,
             cripto_valor=valor_cripto,
-            cripto_endereco="0x61C56137bd83eeeC5d532a351b2D99bD7d426339",
+            cripto_endereco=SMART_WALLET_ADDRESS, # Usar SMART_WALLET_ADDRESS
             status='pendente'
         )
         db.session.add(pedido)
+        db.session.flush() # Garante que pedido.id esteja disponível antes de adicionar ItemPedido
+
+        # Transferir itens do ItemCarrinho para ItemPedido
+        for item_carrinho in itens_carrinho:
+            item_pedido = ItemPedido(
+                pedido_id=pedido.id,
+                anuncio_id=item_carrinho.anuncio_id,
+                quantidade=item_carrinho.quantidade,
+                preco_unitario=item_carrinho.anuncio.preco, # Preço no momento da compra
+                frete_servico=item_carrinho.frete_servico,
+                frete_valor=item_carrinho.frete_valor,
+                frete_prazo=item_carrinho.frete_prazo
+            )
+            db.session.add(item_pedido)
+        
         db.session.commit()
         
         flash(f'Pedido criado! Aguardando confirmação do pagamento em {moeda.upper()}.', 'info')
         return redirect(url_for('meus_pedidos'))
         
     except Exception as e:
-        flash('Erro ao processar pedido.', 'danger')
+        flash(f'Erro ao processar pedido: {str(e)}', 'danger')
+        db.session.rollback() # Garante que a transação é desfeita em caso de erro
         return redirect(url_for('checkout_page'))
 
 @app.route('/meus-pedidos')
 @login_required
 def meus_pedidos():
-    """Página para visualizar pedidos do usuário"""
-    pedidos = Pedido.query.filter_by(user_id=session['user_id']).order_by(Pedido.data_criacao.desc()).all()
-    return render_template('meus_pedidos.html', pedidos=pedidos)
+    """Página para visualizar pedidos do usuário (compras e vendas)"""
+    # Carregar 'Minhas Compras' (pedidos onde o usuário é o comprador)
+    minhas_compras = Pedido.query.filter_by(user_id=session['user_id']).options(
+        # Carrega os itens do pedido e, para cada item, o anúncio associado
+        joinedload(Pedido.itens_pedido).joinedload(ItemPedido.anuncio)
+    ).order_by(Pedido.data_criacao.desc()).all()
+
+    # Carregar 'Minhas Vendas' (pedidos onde o usuário é o vendedor de algum item)
+    # Primeiro, encontre todos os IDs de pedidos que contêm anúncios do usuário logado
+    venda_pedido_ids = db.session.query(ItemPedido.pedido_id).join(Anuncio).filter(
+        Anuncio.user_id == session['user_id']
+    ).distinct().all()
+    
+    # Extraia os IDs dos pedidos
+    venda_pedido_ids = [pid[0] for pid in venda_pedido_ids]
+
+    # Em seguida, carregue os objetos Pedido correspondentes, com seus itens e anúncios
+    minhas_vendas = Pedido.query.filter(Pedido.id.in_(venda_pedido_ids)).options(
+        joinedload(Pedido.itens_pedido).joinedload(ItemPedido.anuncio)
+    ).order_by(Pedido.data_criacao.desc()).all()
+
+    return render_template('meus_pedidos.html', 
+                           minhas_compras=minhas_compras,
+                           minhas_vendas=minhas_vendas)
+
 
 @app.route('/admin/pedidos')
-@login_required
+@admin_required
 def admin_pedidos():
     """Página para administrador verificar pedidos"""
-    if session.get('user_id') != 1:  # Assumindo que o admin tem ID 1
-        flash('Acesso negado.', 'danger')
-        return redirect(url_for('home'))
-    
-    pedidos = Pedido.query.order_by(Pedido.data_criacao.desc()).all()
+    pedidos = Pedido.query.options(
+        joinedload(Pedido.comprador), # Carrega o comprador do pedido
+        joinedload(Pedido.itens_pedido).joinedload(ItemPedido.anuncio).joinedload(Anuncio.autor) # Carrega itens, anúncios e seus autores
+    ).order_by(Pedido.data_criacao.desc()).all()
     return render_template('admin_pedidos.html', pedidos=pedidos)
 
 @app.route('/admin/confirmar-pagamento/<int:pedido_id>', methods=['POST'])
-@login_required
+@admin_required
 def confirmar_pagamento_admin(pedido_id):
     """Admin confirma que recebeu o pagamento"""
-    if session.get('user_id') != 1:
-        flash('Acesso negado.', 'danger')
-        return redirect(url_for('home'))
-    
     try:
         pedido = Pedido.query.get_or_404(pedido_id)
+        
+        # Garante que apenas pedidos pendentes podem ser confirmados
+        if pedido.status != 'pendente':
+            flash(f'O pedido #{pedido.id} já foi processado ou não está pendente.', 'warning')
+            return redirect(url_for('admin_pedidos'))
+
         hash_transacao = request.form.get('hash_transacao', '')
         
         pedido.status = 'pago'
         pedido.data_pagamento = datetime.utcnow()
         pedido.hash_transacao = hash_transacao
         
-        # Limpar carrinho do usuário
-        itens_carrinho = ItemCarrinho.query.filter_by(user_id=pedido.user_id).all()
-        for item in itens_carrinho:
-            db.session.delete(item)
+        # Limpar os itens do carrinho do usuário que correspondem aos itens deste pedido
+        for item_pedido in pedido.itens_pedido:
+            item_carrinho_to_remove = ItemCarrinho.query.filter_by(
+                user_id=pedido.user_id, # Usuário do pedido
+                anuncio_id=item_pedido.anuncio_id
+            ).first()
+            if item_carrinho_to_remove:
+                db.session.delete(item_carrinho_to_remove)
         
         db.session.commit()
         
@@ -1160,7 +1291,8 @@ def confirmar_pagamento_admin(pedido_id):
         return redirect(url_for('admin_pedidos'))
         
     except Exception as e:
-        flash('Erro ao confirmar pagamento.', 'danger')
+        db.session.rollback() # Reverte a transação em caso de erro
+        flash(f'Erro ao confirmar pagamento: {str(e)}', 'danger')
         return redirect(url_for('admin_pedidos'))
 
 @app.route('/pagamento/sucesso')
@@ -1176,26 +1308,45 @@ def pagamento_sucesso():
     print(f"External Reference: {external_reference}")
     print(f"Query params: {request.args}")
     
-    if payment_id:
-        try:
-            payment_info = mp.payment().get(payment_id)
-            print(f"Informações do pagamento: {payment_info}")
-        except Exception as e:
-            print(f"Erro ao buscar informações do pagamento: {str(e)}")
-    
     if status == 'approved':
-        # Processa o pedido como pago
-        itens_carrinho = ItemCarrinho.query.filter_by(user_id=session['user_id']).all()
-        for item in itens_carrinho:
-            # Aqui você pode criar um registro de pedido, enviar notificações, etc.
-            db.session.delete(item)
-        db.session.commit()
-        
-        flash('Pagamento aprovado! Seu pedido foi processado com sucesso.', 'success')
+        # Encontre o pedido pendente usando o external_reference ou payment_id
+        # Idealmente, o external_reference seria o id do pedido criado anteriormente.
+        # Por simplicidade, vamos tentar encontrar um pedido do usuário logado que esteja pendente
+        # e que não tenha sido processado por este payment_id ainda.
+        pedido_para_atualizar = Pedido.query.filter_by(
+            user_id=session['user_id'],
+            status='pendente'
+            # Poderia adicionar external_reference ou payment_id aqui para ser mais específico
+        ).first()
+
+        if pedido_para_atualizar:
+            # Se a preferência do Mercado Pago usa um external_reference único que é o ID do Pedido
+            # então poderíamos fazer: pedido_para_atualizar = Pedido.query.get(int(external_reference.split('_')[1]))
+            # Mas a sua geração de external_reference é 'pedido_{session['user_id']}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}'
+            # então seria necessário parsear isso ou ter um campo dedicado no Pedido para o external_reference do MP.
+            
+            pedido_para_atualizar.status = 'pago'
+            pedido_para_atualizar.data_pagamento = datetime.utcnow()
+            pedido_para_atualizar.hash_transacao = payment_id # Usar o ID do pagamento do Mercado Pago como hash
+
+            # Limpar os itens do carrinho do usuário que correspondem aos itens deste pedido
+            for item_pedido in pedido_para_atualizar.itens_pedido:
+                item_carrinho_to_remove = ItemCarrinho.query.filter_by(
+                    user_id=session['user_id'],
+                    anuncio_id=item_pedido.anuncio_id
+                ).first()
+                if item_carrinho_to_remove:
+                    db.session.delete(item_carrinho_to_remove)
+
+            db.session.commit()
+            flash('Pagamento aprovado! Seu pedido foi processado com sucesso.', 'success')
+        else:
+            flash('Pagamento aprovado, mas não foi possível vincular a um pedido pendente existente.', 'warning')
+            print(f"Alerta: Pagamento {payment_id} aprovado, mas nenhum pedido pendente encontrado para o usuário {session['user_id']}.")
     else:
         flash('O pagamento foi recebido, mas ainda está sendo processado.', 'info')
     
-    return redirect(url_for('home'))
+    return redirect(url_for('meus_pedidos')) # Redireciona para meus_pedidos
 
 @app.route('/pagamento/falha')
 @login_required
@@ -1210,12 +1361,12 @@ def pagamento_falha():
     print(f"External Reference: {external_reference}")
     print(f"Query params: {request.args}")
     
-    if payment_id:
-        try:
-            payment_info = mp.payment().get(payment_id)
-            print(f"Informações do pagamento: {payment_info}")
-        except Exception as e:
-            print(f"Erro ao buscar informações do pagamento: {str(e)}")
+    # Opcional: Atualizar o status do pedido para 'cancelado' ou 'falha'
+    # Buscar o pedido pelo external_reference (ou como você o vinculou)
+    # pedido_para_atualizar = Pedido.query.filter_by(external_reference=external_reference).first()
+    # if pedido_para_atualizar:
+    #     pedido_para_atualizar.status = 'cancelado' # ou 'falha'
+    #     db.session.commit()
     
     flash('Houve um problema com o pagamento. Por favor, tente novamente.', 'danger')
     return redirect(url_for('carrinho_page'))
@@ -1224,7 +1375,7 @@ def pagamento_falha():
 @login_required
 def pagamento_pendente():
     flash('O pagamento está pendente. Você receberá uma notificação quando for confirmado.', 'warning')
-    return redirect(url_for('home'))
+    return redirect(url_for('meus_pedidos')) # Redireciona para meus_pedidos, onde o usuário verá o status
 
 @app.route('/webhook/mercadopago', methods=['POST'])
 def webhook_mercadopago():
@@ -1240,9 +1391,25 @@ def webhook_mercadopago():
                 external_reference = payment_data.get("external_reference")
                 
                 if payment_data["status"] == "approved":
-                    # Aqui você pode atualizar o status do pedido no banco de dados
-                    # e enviar notificações para o vendedor e comprador
-                    pass
+                    # Tentar encontrar o pedido associado a este external_reference
+                    # Você precisará ajustar como o external_reference é usado no seu modelo Pedido
+                    # Por exemplo, se você o salva em um campo no Pedido
+                    # pedido_para_atualizar = Pedido.query.filter_by(external_reference=external_reference).first()
+                    # if pedido_para_atualizar:
+                    #     pedido_para_atualizar.status = 'pago'
+                    #     pedido_para_atualizar.data_pagamento = datetime.utcnow()
+                    #     pedido_para_atualizar.hash_transacao = payment_id
+                    #     db.session.commit()
+
+                    # Lógica para limpar o carrinho para os itens deste pedido (se não foi feito ainda)
+                    # Isso é importante para evitar que o usuário tente comprar os mesmos itens novamente
+                    # if pedido_para_atualizar:
+                    #    for item_pedido in pedido_para_atualizar.itens_pedido:
+                    #        item_carrinho_to_remove = ItemCarrinho.query.filter_by(user_id=pedido_para_atualizar.user_id, anuncio_id=item_pedido.anuncio_id).first()
+                    #        if item_carrinho_to_remove:
+                    #            db.session.delete(item_carrinho_to_remove)
+                    #    db.session.commit()
+                    pass # Placeholder para a lógica real do webhook
                 
         return jsonify({"status": "ok"}), 200
     except Exception as e:
@@ -1264,12 +1431,11 @@ def finalizar_compra_action():
     
     # Aqui você implementaria a lógica de finalização da compra
     # Por enquanto, apenas limpa o carrinho e mostra uma mensagem
-    for item in itens_carrinho:
-        db.session.delete(item)
-    db.session.commit()
+    # IMPORTANTE: A lógica de criação do Pedido e ItemPedido foi movida para confirmar_pagamento_cripto
+    # e/ou tratamento do Mercado Pago.
     
-    flash('Compra finalizada com sucesso! Entre em contato com o vendedor para combinar o pagamento e a entrega.', 'success')
-    return redirect(url_for('home'))
+    flash('Compra finalizada com sucesso! Seus itens foram processados.', 'success')
+    return redirect(url_for('meus_pedidos')) # Redireciona para meus_pedidos
 
 @app.route('/anuncio/<int:anuncio_id>/fazer-oferta', methods=['POST'])
 @login_required
@@ -1305,6 +1471,7 @@ def aceitar_oferta_action(oferta_id):
         anuncio.status = 'vendido'
         oferta.status = 'aceita'
         
+        # Rejeitar outras ofertas pendentes para o mesmo anúncio
         Oferta.query.filter(
             Oferta.anuncio_id == anuncio.id, 
             Oferta.id != oferta.id,
@@ -1319,6 +1486,7 @@ def aceitar_oferta_action(oferta_id):
         )
         db.session.add(notificacao_para_comprador)
         
+        # Adicionar o item ao carrinho do comprador se ainda não estiver lá
         if not ItemCarrinho.query.filter_by(user_id=oferta.comprador_id, anuncio_id=anuncio.id).first():
             db.session.add(ItemCarrinho(user_id=oferta.comprador_id, anuncio_id=anuncio.id))
 
@@ -1583,6 +1751,7 @@ def calcular_frete_api():
     item_id = data.get('item_id')
     anuncio_id = data.get('anuncio_id')
     anuncio = None
+    
     if item_id:
         item = ItemCarrinho.query.filter_by(id=item_id, user_id=session['user_id']).first()
         if not item:
@@ -1590,22 +1759,29 @@ def calcular_frete_api():
         anuncio = Anuncio.query.get(item.anuncio_id)
     elif anuncio_id:
         anuncio = Anuncio.query.get(anuncio_id)
+        
     if not cep_destino_comprador or not anuncio:
         return jsonify({"error": "CEP de destino e ID do item do carrinho ou anúncio são obrigatórios."}), 400
+        
     if not anuncio:
         return jsonify({"error": "Anúncio não encontrado."}), 404
+        
     cep_origem_vendedor = anuncio.autor.cep
     if not cep_origem_vendedor:
         return jsonify({"error": "O vendedor não registou um CEP de origem. Não é possível calcular o frete."}), 400
+        
     opcoes_trecho1 = calcular_frete_melhor_envio(cep_origem_vendedor, INTERMEDIARY_CEP, anuncio)
     if not opcoes_trecho1:
         return jsonify({"error": "Não foi possível calcular o frete do vendedor para o nosso centro. Verifique o CEP de origem do vendedor."}), 500
+        
     opcoes_trecho2 = calcular_frete_melhor_envio(INTERMEDIARY_CEP, cep_destino_comprador, anuncio)
     if not opcoes_trecho2:
         return jsonify({"error": "Não foi possível calcular o frete para o seu CEP. Verifique o CEP de destino e tente novamente."}), 500
+        
     opcoes_finais = []
     mapa_trecho2 = {opt['id']: opt for opt in opcoes_trecho2}
     prazo_manuseio = 2
+    
     for opt1 in opcoes_trecho1:
         if opt1['id'] in mapa_trecho2:
             opt2 = mapa_trecho2[opt1['id']]
@@ -1618,8 +1794,10 @@ def calcular_frete_api():
                 "prazo": prazo_total,
                 "empresa": opt1['company']
             })
+            
     if not opcoes_finais:
         return jsonify({"error": "Nenhuma opção de frete em comum foi encontrada para a rota completa."}), 404
+        
     return jsonify({"opcoes": opcoes_finais})
 
 @app.route('/api/selecionar-frete', methods=['POST'])
@@ -1669,7 +1847,7 @@ def verificar_conta_mercadopago():
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-    app.run(debug=True)
+    # app.run(debug=True) # Removido para usar a função iniciar_verificacao_automatica
 
 def verificar_transacao_ethereum(hash_transacao):
     """Verifica uma transação Ethereum usando Etherscan API"""
@@ -1739,130 +1917,137 @@ def verificar_transacao_polygon(hash_transacao):
 
 def verificar_pagamento_automatico(pedido_id):
     """Verifica automaticamente se um pagamento foi recebido"""
-    try:
-        pedido = Pedido.query.get(pedido_id)
-        if not pedido or pedido.status != 'pendente':
-            return
-        
-        # Verificar baseado na criptomoeda
-        if pedido.cripto_moeda == 'ethereum':
-            # Verificar transações recentes para o endereço
-            if ETHERSCAN_API_KEY != "YourEtherscanAPIKey":
-                url = f"https://api.etherscan.io/api"
-                params = {
-                    "module": "account",
-                    "action": "txlist",
-                    "address": SMART_WALLET_ADDRESS,
-                    "startblock": 0,
-                    "endblock": 99999999,
-                    "sort": "desc",
-                    "apikey": ETHERSCAN_API_KEY
-                }
-                response = requests.get(url, params=params)
-                data = response.json()
-                
-                if data.get("result"):
-                    for tx in data["result"]:
-                        # Verificar se o valor corresponde
-                        valor_wei = int(tx["value"])
-                        valor_eth = valor_wei / 10**18
-                        
-                        if abs(valor_eth - pedido.cripto_valor) < 0.0001:  # Tolerância
-                            # Verificar se é uma transação recente
-                            if int(tx["timeStamp"]) > (time.time() - 3600):  # Última hora
-                                confirmar_pagamento_automatico(pedido, tx["hash"])
-                                break
-            else:
-                print(f"Chave da API Etherscan não configurada para pedido #{pedido_id}")
-        
-        elif pedido.cripto_moeda == 'bitcoin':
-            # Verificar transações Bitcoin (API Mempool.space - compatível com Bech32)
-            try:
-                url = f"{BITCOIN_API_URL}/address/{SMART_WALLET_ADDRESS}/txs"
-                response = requests.get(url, timeout=10)
-                data = response.json()
-                
-                for tx in data:
-                    for output in tx.get("vout", []):
-                        if output.get("scriptpubkey_address") == SMART_WALLET_ADDRESS:
-                            valor_btc = output.get("value", 0) / 100000000  # Converter de satoshis
-                            if abs(valor_btc - pedido.cripto_valor) < 0.00000001:  # Tolerância
-                                if tx.get("status", {}).get("confirmed"):
-                                    confirmar_pagamento_automatico(pedido, tx["txid"])
-                                    return
-            except Exception as e:
-                print(f"Erro ao verificar Bitcoin para pedido #{pedido_id}: {str(e)}")
-        
-        elif pedido.cripto_moeda == 'polygon':
-            # Verificar transações Polygon
-            if POLYGON_API_KEY != "YourPolygonAPIKey":
-                url = f"https://api.polygonscan.com/api"
-                params = {
-                    "module": "account",
-                    "action": "txlist",
-                    "address": SMART_WALLET_ADDRESS,
-                    "startblock": 0,
-                    "endblock": 99999999,
-                    "sort": "desc",
-                    "apikey": POLYGON_API_KEY
-                }
-                response = requests.get(url, params=params)
-                data = response.json()
-                
-                if data.get("result"):
-                    for tx in data["result"]:
-                        valor_wei = int(tx["value"])
-                        valor_matic = valor_wei / 10**18
-                        
-                        if abs(valor_matic - pedido.cripto_valor) < 0.0001:
-                            if int(tx["timeStamp"]) > (time.time() - 3600):
-                                confirmar_pagamento_automatico(pedido, tx["hash"])
-                                break
-            else:
-                print(f"Chave da API Polygon não configurada para pedido #{pedido_id}")
+    with app.app_context(): # Usar app_context para operações de DB em threads
+        try:
+            pedido = Pedido.query.get(pedido_id)
+            if not pedido or pedido.status != 'pendente':
+                return
+            
+            # Verificar baseado na criptomoeda
+            if pedido.cripto_moeda == 'ethereum':
+                # Verificar transações recentes para o endereço
+                if ETHERSCAN_API_KEY != "YourEtherscanAPIKey":
+                    url = f"https://api.etherscan.io/api"
+                    params = {
+                        "module": "account",
+                        "action": "txlist",
+                        "address": SMART_WALLET_ADDRESS,
+                        "startblock": 0,
+                        "endblock": 99999999,
+                        "sort": "desc",
+                        "apikey": ETHERSCAN_API_KEY
+                    }
+                    response = requests.get(url, params=params)
+                    data = response.json()
+                    
+                    if data.get("result"):
+                        for tx in data["result"]:
+                            # Verificar se o valor corresponde
+                            valor_wei = int(tx["value"])
+                            valor_eth = valor_wei / 10**18
                             
-    except Exception as e:
-        print(f"Erro na verificação automática para pedido #{pedido_id}: {str(e)}")
+                            if abs(valor_eth - pedido.cripto_valor) < 0.0001:  # Tolerância
+                                # Verificar se é uma transação recente
+                                if int(tx["timeStamp"]) > (time.time() - 3600):  # Última hora
+                                    confirmar_pagamento_automatico(pedido, tx["hash"])
+                                    break
+                else:
+                    print(f"Chave da API Etherscan não configurada para pedido #{pedido_id}")
+            
+            elif pedido.cripto_moeda == 'bitcoin':
+                # Verificar transações Bitcoin (API Mempool.space - compatível com Bech32)
+                try:
+                    url = f"{BITCOIN_API_URL}/address/{SMART_WALLET_ADDRESS}/txs"
+                    response = requests.get(url, timeout=10)
+                    data = response.json()
+                    
+                    for tx in data:
+                        for output in tx.get("vout", []):
+                            if output.get("scriptpubkey_address") == SMART_WALLET_ADDRESS:
+                                valor_btc = output.get("value", 0) / 100000000  # Converter de satoshis
+                                if abs(valor_btc - pedido.cripto_valor) < 0.00000001:  # Tolerância
+                                    if tx.get("status", {}).get("confirmed"):
+                                        confirmar_pagamento_automatico(pedido, tx["txid"])
+                                        return
+                except Exception as e:
+                    print(f"Erro ao verificar Bitcoin para pedido #{pedido_id}: {str(e)}")
+            
+            elif pedido.cripto_moeda == 'polygon':
+                # Verificar transações Polygon
+                if POLYGON_API_KEY != "YourPolygonAPIKey":
+                    url = f"https://api.polygonscan.com/api"
+                    params = {
+                        "module": "account",
+                        "action": "txlist",
+                        "address": SMART_WALLET_ADDRESS,
+                        "startblock": 0,
+                        "endblock": 99999999,
+                        "sort": "desc",
+                        "apikey": POLYGON_API_KEY
+                    }
+                    response = requests.get(url, params=params)
+                    data = response.json()
+                    
+                    if data.get("result"):
+                        for tx in data["result"]:
+                            valor_wei = int(tx["value"])
+                            valor_matic = valor_wei / 10**18
+                            
+                            if abs(valor_matic - pedido.cripto_valor) < 0.0001:
+                                if int(tx["timeStamp"]) > (time.time() - 3600):
+                                    confirmar_pagamento_automatico(pedido, tx["hash"])
+                                    break
+                else:
+                    print(f"Chave da API Polygon não configurada para pedido #{pedido_id}")
+        except Exception as e:
+            print(f"Erro na verificação automática para pedido #{pedido_id}: {str(e)}")
 
 def confirmar_pagamento_automatico(pedido, hash_transacao):
     """Confirma automaticamente um pagamento recebido"""
-    try:
-        print(f"💰 Pagamento detectado para pedido #{pedido.id}!")
-        print(f"   Hash: {hash_transacao}")
-        print(f"   Valor: {pedido.cripto_valor} {pedido.cripto_moeda.upper()}")
-        
-        pedido.status = 'pago'
-        pedido.data_pagamento = datetime.utcnow()
-        pedido.hash_transacao = hash_transacao
-        
-        # Limpar carrinho do usuário
-        itens_carrinho = ItemCarrinho.query.filter_by(user_id=pedido.user_id).all()
-        for item in itens_carrinho:
-            db.session.delete(item)
-        
-        db.session.commit()
-        
-        print(f"✅ Pagamento automático confirmado para pedido #{pedido.id}")
-        print(f"   Carrinho do usuário {pedido.user_id} foi limpo")
-        
-    except Exception as e:
-        print(f"❌ Erro ao confirmar pagamento automático para pedido #{pedido.id}: {str(e)}")
-        db.session.rollback()
+    with app.app_context(): # Usar app_context para operações de DB em threads
+        try:
+            print(f"💰 Pagamento detectado para pedido #{pedido.id}!")
+            print(f"   Hash: {hash_transacao}")
+            print(f"   Valor: {pedido.cripto_valor} {pedido.cripto_moeda.upper()}")
+            
+            pedido.status = 'pago'
+            pedido.data_pagamento = datetime.utcnow()
+            pedido.hash_transacao = hash_transacao
+            
+            # Limpar carrinho do usuário para os itens desta transação
+            # Iterar pelos itens do pedido confirmado e remover do carrinho
+            for item_pedido in pedido.itens_pedido:
+                item_carrinho_to_remove = ItemCarrinho.query.filter_by(
+                    user_id=pedido.user_id, # Usuário do pedido
+                    anuncio_id=item_pedido.anuncio_id
+                ).first()
+                if item_carrinho_to_remove:
+                    db.session.delete(item_carrinho_to_remove)
+            
+            db.session.commit()
+            
+            print(f"✅ Pagamento automático confirmado para pedido #{pedido.id}")
+            print(f"   Carrinho do usuário {pedido.user_id} foi limpo para os itens do pedido.")
+        except Exception as e:
+            print(f"❌ Erro ao confirmar pagamento automático para pedido #{pedido.id}: {str(e)}")
+            db.session.rollback()
 
 def verificar_pedidos_pendentes():
     """Verifica todos os pedidos pendentes periodicamente"""
     print("🔄 Iniciando verificação automática de pagamentos em criptomoedas...")
     while True:
         try:
-            pedidos_pendentes = Pedido.query.filter_by(status='pendente').all()
-            if pedidos_pendentes:
-                print(f"📋 Verificando {len(pedidos_pendentes)} pedidos pendentes...")
-                for pedido in pedidos_pendentes:
-                    print(f"🔍 Verificando pedido #{pedido.id} - {pedido.cripto_moeda.upper()}")
-                    verificar_pagamento_automatico(pedido.id)
-            else:
-                print("✅ Nenhum pedido pendente encontrado.")
-            
+            with app.app_context(): # Usar app_context para operações de DB
+                pedidos_pendentes = Pedido.query.filter_by(status='pendente').all()
+                if pedidos_pendentes:
+                    print(f"📋 Verificando {len(pedidos_pendentes)} pedidos pendentes...")
+                    for pedido in pedidos_pendentes:
+                        print(f"🔍 Verificando pedido #{pedido.id} - {pedido.cripto_moeda.upper()}")
+                        # Carregar itens do pedido para que confirmar_pagamento_automatico possa acessá-los
+                        db.session.refresh(pedido) # Recarregar o pedido para garantir que itens_pedido estejam disponíveis
+                        verificar_pagamento_automatico(pedido.id)
+                else:
+                    print("✅ Nenhum pedido pendente encontrado.")
             print("⏰ Aguardando 60 segundos para próxima verificação...")
             time.sleep(60)  # Verificar a cada 1 minuto
         except Exception as e:
@@ -1927,9 +2112,251 @@ def webhook_blockchain():
         
         return jsonify({"status": "ok"}), 200
     except Exception as e:
+        print(f"Erro no webhook do Mercado Pago: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
 # Inicializar verificação automática quando a aplicação iniciar
 if __name__ == '__main__':
     iniciar_verificacao_automatica()
     app.run(debug=True)
+
+def calcular_frete(cep_origem, cep_destino):
+    """Calcula o frete usando a API do ViaCEP"""
+    try:
+        # Limpa os CEPs (remove caracteres não numéricos)
+        cep_origem = re.sub(r'\D', '', cep_origem)
+        cep_destino = re.sub(r'\D', '', cep_destino)
+        
+        # Validação básica dos CEPs
+        if not cep_origem or not cep_destino or len(cep_origem) != 8 or len(cep_destino) != 8:
+            print(f"CEPs inválidos - Origem: {cep_origem}, Destino: {cep_destino}")
+            return None
+            
+        # Busca informações do CEP de origem
+        origem_url = f'https://viacep.com.br/ws/{cep_origem}/json/'
+        origem_response = requests.get(origem_url)
+        origem_data = origem_response.json()
+        
+        if 'erro' in origem_data:
+            print(f"Erro ao buscar CEP de origem {cep_origem}: {origem_data.get('erro')}")
+            return None
+            
+        # Busca informações do CEP de destino
+        destino_url = f'https://viacep.com.br/ws/{cep_destino}/json/'
+        destino_response = requests.get(destino_url)
+        destino_data = destino_response.json()
+        
+        if 'erro' in destino_data:
+            print(f"Erro ao buscar CEP de destino {cep_destino}: {destino_data.get('erro')}")
+            return None
+            
+        # Calcula a distância usando a API do Google Maps
+        origem = f"{origem_data['logradouro']}, {origem_data['bairro']}, {origem_data['localidade']}, {origem_data['uf']}"
+        destino = f"{destino_data['logradouro']}, {destino_data['bairro']}, {destino_data['localidade']}, {destino_data['uf']}"
+        
+        # Se não tiver API key do Google, usa cálculo simplificado
+        if not os.getenv('GOOGLE_MAPS_API_KEY'):
+            # Cálculo simplificado baseado em região
+            regioes = {
+                'Norte': ['AC', 'AP', 'AM', 'PA', 'RO', 'RR', 'TO'],
+                'Nordeste': ['AL', 'BA', 'CE', 'MA', 'PB', 'PE', 'PI', 'RN', 'SE'],
+                'Centro-Oeste': ['DF', 'GO', 'MT', 'MS'],
+                'Sudeste': ['ES', 'MG', 'RJ', 'SP'],
+                'Sul': ['PR', 'RS', 'SC']
+            }
+            
+            origem_regiao = next((reg for reg, ufs in regioes.items() if origem_data['uf'] in ufs), 'Desconhecida')
+            destino_regiao = next((reg for reg, ufs in regioes.items() if destino_data['uf'] in ufs), 'Desconhecida')
+            
+            # Valores base por região
+            valores_base = {
+                'Norte': 50.0,
+                'Nordeste': 40.0,
+                'Centro-Oeste': 35.0,
+                'Sudeste': 25.0,
+                'Sul': 30.0
+            }
+            
+            # Se for mesma região, frete mais barato
+            if origem_regiao == destino_regiao:
+                return valores_base[origem_regiao]
+            
+            # Se for região diferente, soma os valores
+            return valores_base[origem_regiao] + valores_base[destino_regiao]
+        
+        # Se tiver API key do Google, usa cálculo real
+        api_key = os.getenv('GOOGLE_MAPS_API_KEY')
+        url = f'https://maps.googleapis.com/maps/api/distancematrix/json?origins={origem}&destinations={destino}&key={api_key}'
+        response = requests.get(url)
+        data = response.json()
+        
+        if data['status'] == 'OK':
+            distancia = data['rows'][0]['elements'][0]['distance']['value'] / 1000  # Converte para km
+            return round(distancia * 2, 2)  # R$2 por km
+            
+        return None
+        
+    except Exception as e:
+        print(f"Erro ao calcular frete: {str(e)}")
+        return None
+
+@app.route('/calcular-frete', methods=['POST'])
+def calcular_frete_route():
+    try:
+        data = request.get_json()
+        cep_origem = data.get('cep_origem')
+        cep_destino = data.get('cep_destino')
+        
+        if not cep_origem or not cep_destino:
+            return jsonify({'error': 'CEPs de origem e destino são obrigatórios'}), 400
+            
+        # Busca o CEP do vendedor no banco de dados
+        anuncio = Anuncio.query.get(data.get('anuncio_id'))
+        if not anuncio:
+            return jsonify({'error': 'Anúncio não encontrado'}), 404
+            
+        vendedor = User.query.get(anuncio.user_id)
+        if not vendedor or not vendedor.cep:
+            return jsonify({'error': 'CEP do vendedor não encontrado'}), 404
+            
+        # Usa o CEP do vendedor como origem
+        frete = calcular_frete(vendedor.cep, cep_destino)
+        
+        if frete is None:
+            return jsonify({'error': 'Não foi possível calcular o frete'}), 400
+            
+        return jsonify({'frete': frete})
+        
+    except Exception as e:
+        print(f"Erro ao calcular frete: {str(e)}")
+        return jsonify({'error': 'Erro ao calcular frete'}), 500
+
+@app.route('/calcular-frete-anuncio/<int:anuncio_id>', methods=['POST'])
+def calcular_frete_anuncio(anuncio_id):
+    try:
+        data = request.get_json()
+        cep_destino = data.get('cep')
+        
+        if not cep_destino:
+            return jsonify({'error': 'CEP não fornecido'}), 400
+            
+        anuncio = Anuncio.query.get_or_404(anuncio_id)
+        
+        if not anuncio.autor.cep:
+            return jsonify({'error': 'Vendedor não possui CEP cadastrado'}), 400
+            
+        if not all([anuncio.largura, anuncio.altura, anuncio.comprimento, anuncio.peso]):
+            return jsonify({'error': 'Anúncio não possui todas as dimensões necessárias'}), 400
+            
+        opcoes_frete = calcular_frete_melhor_envio(anuncio.autor.cep, cep_destino, anuncio)
+        
+        if not opcoes_frete:
+            return jsonify({'error': 'Não foi possível calcular o frete'}), 400
+            
+        return jsonify(opcoes_frete)
+        
+    except Exception as e:
+        print(f"Erro ao calcular frete: {str(e)}")
+        return jsonify({'error': 'Erro ao calcular frete'}), 500
+
+@app.route('/compra-admin', methods=['POST'])
+@admin_required
+def compra_admin():
+    itens_carrinho = ItemCarrinho.query.options(joinedload(ItemCarrinho.anuncio)).filter_by(user_id=session['user_id']).all()
+    if not itens_carrinho:
+        flash('O carrinho está vazio.', 'warning')
+        return redirect(url_for('checkout_page'))
+
+    total_carrinho = sum(item.anuncio.preco * item.quantidade for item in itens_carrinho if item.anuncio)
+    total_frete = sum(item.frete_valor or 0 for item in itens_carrinho)
+    taxa_autenticidade = 20.00
+    total_geral = total_carrinho + total_frete + taxa_autenticidade
+
+    # Cria o pedido como pago
+    pedido = Pedido(
+        user_id=session['user_id'],
+        total_brl=total_geral,
+        status='pago',
+        data_pagamento=datetime.utcnow()
+    )
+    db.session.add(pedido)
+    db.session.flush()
+
+    for item in itens_carrinho:
+        item_pedido = ItemPedido(
+            pedido_id=pedido.id,
+            anuncio_id=item.anuncio_id,
+            quantidade=item.quantidade,
+            preco_unitario=item.anuncio.preco,
+            frete_servico=item.frete_servico,
+            frete_valor=item.frete_valor,
+            frete_prazo=item.frete_prazo
+        )
+        db.session.add(item_pedido)
+        db.session.delete(item)
+    db.session.commit()
+    flash('Compra admin realizada com sucesso! Pedido criado e marcado como pago.', 'success')
+    return redirect(url_for('meus_pedidos'))
+
+@app.route('/admin/confirmar-pagamento-bitcoin/<int:pedido_id>', methods=['POST'])
+@admin_required
+def confirmar_pagamento_bitcoin_admin(pedido_id):
+    """Rota para admin confirmar pagamento via Bitcoin"""
+    try:
+        pedido = Pedido.query.get_or_404(pedido_id)
+        hash_transacao = request.form.get('hash_transacao')
+        
+        if not hash_transacao:
+            flash('Hash da transação é obrigatório', 'error')
+            return redirect(url_for('admin_pedidos'))
+            
+        # Verificar a transação Bitcoin
+        confirmado, dados = verificar_transacao_bitcoin(hash_transacao)
+        
+        if confirmado:
+            # Atualizar status do pedido
+            pedido.status = 'pago'
+            pedido.data_pagamento = datetime.utcnow()
+            pedido.hash_transacao = hash_transacao
+            
+            # Limpar carrinho do usuário
+            for item_pedido in pedido.itens_pedido:
+                item_carrinho = ItemCarrinho.query.filter_by(
+                    user_id=pedido.user_id,
+                    anuncio_id=item_pedido.anuncio_id
+                ).first()
+                if item_carrinho:
+                    db.session.delete(item_carrinho)
+            
+            db.session.commit()
+            flash('Pagamento Bitcoin confirmado com sucesso!', 'success')
+        else:
+            flash('Transação Bitcoin não encontrada ou não confirmada', 'error')
+            
+        return redirect(url_for('admin_pedidos'))
+        
+    except Exception as e:
+        flash(f'Erro ao confirmar pagamento: {str(e)}', 'error')
+        return redirect(url_for('admin_pedidos'))
+
+def verificar_transacao_bitcoin(txid):
+    """Verifica uma transação Bitcoin usando a API do Mempool.space"""
+    try:
+        # Usar a API do Mempool.space (compatível com endereços Bech32)
+        url = f"{BITCOIN_API_URL}/tx/{txid}"
+        response = requests.get(url, timeout=10)
+        data = response.json()
+        
+        if response.status_code == 200:
+            # Verificar se a transação está confirmada
+            if data.get("status", {}).get("confirmed"):
+                return True, {
+                    "hash": txid,
+                    "valor": data.get("fee", 0) / 100000000,  # Converter de satoshis
+                    "confirmacoes": data.get("status", {}).get("block_height", 0),
+                    "data": datetime.fromtimestamp(data.get("status", {}).get("block_time", 0))
+                }
+        return False, None
+    except Exception as e:
+        print(f"Erro ao verificar transação Bitcoin: {str(e)}")
+        return False, None

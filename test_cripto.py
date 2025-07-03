@@ -8,6 +8,8 @@ import requests
 import json
 import time
 
+MELHOR_ENVIO_API_URL = "https://www.melhorenvio.com.br/api/v2/shipment"
+
 def test_cotacao_cripto():
     """Testa a obtenção de cotação de criptomoedas"""
     print("🧪 Testando cotação de criptomoedas...")
@@ -104,6 +106,49 @@ def test_apis_status():
                 print(f"⚠️ {nome}: Status {response.status_code}")
         except Exception as e:
             print(f"❌ {nome}: Offline - {e}")
+
+def montar_json_envio(item_pedido):
+    anuncio = item_pedido.anuncio
+    vendedor = anuncio.autor
+    pedido = item_pedido.pedido
+    comprador = pedido.comprador
+
+    return {
+        "service": item_pedido.frete_servico,  # Automático!
+        "from": {
+            "name": vendedor.nome,
+            "phone": getattr(vendedor, 'telefone', ''),
+            "email": vendedor.email,
+            "address": vendedor.endereco,
+            "number": getattr(vendedor, 'numero', ''),
+            "complement": getattr(vendedor, 'complemento', ''),
+            "district": getattr(vendedor, 'bairro', ''),
+            "city": getattr(vendedor, 'cidade', ''),
+            "state_abbr": getattr(vendedor, 'uf', ''),
+            "postal_code": vendedor.cep
+        },
+        "to": {
+            "name": comprador.nome,
+            "phone": getattr(comprador, 'telefone', ''),
+            "email": comprador.email,
+            "address": comprador.endereco,
+            "number": getattr(comprador, 'numero', ''),
+            "complement": getattr(comprador, 'complemento', ''),
+            "district": getattr(comprador, 'bairro', ''),
+            "city": getattr(comprador, 'cidade', ''),
+            "state_abbr": getattr(comprador, 'uf', ''),
+            "postal_code": comprador.cep
+        },
+        "products": [{
+            "name": anuncio.titulo,
+            "quantity": item_pedido.quantidade,
+            "unitary_value": item_pedido.preco_unitario,
+            "weight": anuncio.peso,
+            "width": anuncio.largura,
+            "height": anuncio.altura,
+            "length": anuncio.comprimento
+        }]
+    }
 
 def main():
     """Executa todos os testes"""

@@ -78,7 +78,7 @@
                     </li>
                     <li class="list-group-item d-flex justify-content-between align-items-center fw-bold fs-5">
                         Total a Pagar:
-                        <span>R$ {{ "%.2f"|format(total_geral - taxa_intermediacao) }}</span>
+                        <span>R$ {{ "%.2f"|format(total_geral) }}</span>
                     </li>
                 </ul>
 
@@ -128,6 +128,16 @@
                     {% endif %}
                     <a href="{{ url_for('carrinho_page') }}" class="btn btn-outline-secondary btn-lg">Voltar ao Carrinho</a>
                 </div>
+
+                {% if current_user.is_authenticated and current_user.is_admin %}
+                <div class="d-grid gap-2 mt-3">
+                    <form action="{{ url_for('compra_admin') }}" method="post">
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-bolt"></i> Compra Direta (Admin)
+                        </button>
+                    </form>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>

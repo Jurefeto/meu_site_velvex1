@@ -4,19 +4,55 @@
 
 {% block head_content %}
     <style>
-        .card-header[data-bs-toggle="collapse"] { cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
-        .card-header h5 { margin-bottom: 0; }
-        .profile-toggle-icon { transition: transform 0.3s ease-in-out; }
+        /* Removendo estilos específicos de card-header de colapso */
+        .card-header[data-bs-toggle="collapse"] {
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .profile-toggle-icon {
+            transition: transform 0.3s ease-in-out;
+        }
+        /* Estes estilos de ícone podem ser removidos se não usarmos mais o colapso do Bootstrap */
         .card-header[aria-expanded="true"] .profile-toggle-icon { transform: rotate(0deg); }
         .card-header[aria-expanded="false"] .profile-toggle-icon { transform: rotate(-90deg); }
+
         .table-responsive .table { margin-bottom: 0; }
-        .card-body.p-0 .table-responsive { border-top: 1px solid #dee2e6; }
-        .card-footer { border-top: 1px solid rgba(0,0,0,.125); }
-        .favorito-img { width: 60px; height: 60px; object-fit: cover; }
+        .favorito-img { width: 60px; height: 60px; object-fit: cover; border-radius: 0.5rem; }
         .scrollable-card-body {
             max-height: 300px;
             overflow-y: auto;
             border-bottom: 1px solid #dee2e6;
+        }
+        .offer-value {
+            font-weight: bold;
+            color: #28a745; /* Cor verde para ofertas */
+        }
+        .offer-status-pending { color: #ffc107; }
+        .offer-status-accepted { color: #28a745; }
+        .offer-status-rejected { color: #dc3545; }
+        .table-responsive {
+            margin-bottom: 1rem;
+        }
+        .pagination-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 1rem;
+        }
+        .content-section {
+            padding: 1.5rem;
+            margin-top: 2rem;
+            background-color: #fff;
+            border-radius: 0.5rem;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            border: 1px solid #e0e0e0;
+        }
+        .content-section:first-of-type {
+            margin-top: 0; /* Ajuste se o primeiro é o bem-vindo */
+        }
+        .profile-form .form-label {
+            font-weight: 500;
         }
     </style>
 {% endblock %}
@@ -25,38 +61,351 @@
 <h2 class="mb-4">Minha Conta</h2>
 
 <!-- Atalhos para todas as seções -->
-<div class="mb-4 d-flex gap-2 flex-wrap">
-    <a href="{{ url_for('meus_pedidos') }}#compras" class="btn btn-outline-primary">
-        <i class="fas fa-shopping-bag"></i> Ver Minhas Compras
+<div class="mb-4 d-flex gap-2 flex-wrap justify-content-center">
+    <a href="{{ url_for('meus_pedidos') }}#compras" class="btn btn-outline-primary shadow-sm rounded-lg">
+        <i class="fas fa-shopping-bag me-1"></i> Ver Minhas Compras
     </a>
-    <a href="{{ url_for('meus_pedidos') }}#vendas" class="btn btn-outline-success">
-        <i class="fas fa-store"></i> Ver Minhas Vendas
+    <a href="{{ url_for('meus_pedidos') }}#vendas" class="btn btn-outline-success shadow-sm rounded-lg">
+        <i class="fas fa-store me-1"></i> Ver Minhas Vendas
     </a>
-    <a href="#card-anuncios" class="btn btn-outline-secondary">
-        <i class="fas fa-bullhorn"></i> Ver Meus Anúncios
+    <a href="#content-anuncios" class="btn btn-outline-secondary shadow-sm rounded-lg js-show-section">
+        <i class="fas fa-bullhorn me-1"></i> Ver Meus Anúncios
     </a>
-    <a href="#card-favoritos" class="btn btn-outline-danger">
-        <i class="fas fa-heart"></i> Ver Meus Favoritos
+    <a href="#content-favoritos" class="btn btn-outline-danger shadow-sm rounded-lg js-show-section">
+        <i class="fas fa-heart me-1"></i> Ver Meus Favoritos
     </a>
-    <a href="#card-ofertas-recebidas" class="btn btn-outline-info">
-        <i class="fas fa-hand-holding-usd"></i> Ver Ofertas Recebidas
+    <a href="#content-ofertas-recebidas" class="btn btn-outline-info shadow-sm rounded-lg js-show-section">
+        <i class="fas fa-hand-holding-usd me-1"></i> Ver Ofertas Recebidas
     </a>
-    <a href="#card-ofertas-feitas" class="btn btn-outline-warning">
-        <i class="fas fa-gift"></i> Ver Ofertas Feitas
+    <a href="#content-ofertas-feitas" class="btn btn-outline-warning shadow-sm rounded-lg js-show-section">
+        <i class="fas fa-gift me-1"></i> Ver Ofertas Feitas
     </a>
-    <a href="#card-perfil" class="btn btn-outline-dark">
-        <i class="fas fa-user-edit"></i> Editar Perfil
+    <a href="#content-perfil" class="btn btn-outline-dark shadow-sm rounded-lg js-show-section">
+        <i class="fas fa-user-edit me-1"></i> Editar Perfil
     </a>
 </div>
 
 <div class="row">
     <div class="col-12">
-        <div class="alert alert-info">
+        <div class="alert alert-info rounded-lg shadow-sm" role="alert">
             <h5 class="alert-heading">Bem-vindo à sua área pessoal!</h5>
             <p class="mb-0">Use os botões acima para acessar rapidamente suas compras, vendas, anúncios, favoritos, ofertas e configurações do perfil.</p>
         </div>
     </div>
 </div>
+
+{# SEÇÃO MEUS ANÚNCIOS #}
+<div id="content-anuncios" class="content-section" style="display: none;">
+    <h3 class="mb-4">Meus Anúncios <i class="fas fa-bullhorn ms-2"></i></h3>
+    <form method="GET" action="{{ url_for('minha_conta_page') }}" class="mb-3 d-flex align-items-center">
+        <input type="text" name="anuncios_search" class="form-control me-2 rounded-md" placeholder="Buscar anúncios..." value="{{ anuncios_search_query }}">
+        <button type="submit" class="btn btn-outline-primary rounded-md"><i class="fas fa-search"></i></button>
+    </form>
+    {% if meus_anuncios %}
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead class="bg-light">
+                <tr>
+                    <th scope="col">Título</th>
+                    <th scope="col">Preço</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for anuncio in meus_anuncios %}
+                <tr>
+                    <td><a href="{{ url_for('detalhes_anuncio_page', anuncio_id=anuncio.id) }}" class="text-decoration-none text-dark">{{ anuncio.titulo }}</a></td>
+                    <td>R$ {{ "%.2f"|format(anuncio.preco) }}</td>
+                    <td>
+                        {% if anuncio.status == 'aprovado' %}
+                        <span class="badge bg-success">Aprovado</span>
+                        {% elif anuncio.status == 'pendente' %}
+                        <span class="badge bg-warning text-dark">Pendente</span>
+                        {% elif anuncio.status == 'rejeitado' %}
+                        <span class="badge bg-danger">Rejeitado</span>
+                        {% elif anuncio.status == 'vendido' %}
+                        <span class="badge bg-info">Vendido</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ url_for('editar_anuncio_action', anuncio_id=anuncio.id) }}" class="btn btn-sm btn-outline-info rounded-md" title="Editar"><i class="fas fa-edit"></i></a>
+                        <form action="{{ url_for('deletar_anuncio_action', anuncio_id=anuncio.id) }}" method="POST" class="d-inline">
+                            <button type="submit" class="btn btn-sm btn-outline-danger rounded-md" title="Deletar" onclick="return confirm('Tem certeza que deseja deletar este anúncio?');"><i class="fas fa-trash-alt"></i></button>
+                        </form>
+                        <a href="{{ url_for('anuncio_chat_page', anuncio_id=anuncio.id) }}" class="btn btn-sm btn-outline-primary rounded-md" title="Chat"><i class="fas fa-comments"></i></a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="text-center text-muted">Você ainda não tem anúncios cadastrados.</p>
+    {% endif %}
+</div>
+
+{# SEÇÃO MEUS FAVORITOS #}
+<div id="content-favoritos" class="content-section" style="display: none;">
+    <h3 class="mb-4">Meus Favoritos <i class="fas fa-heart ms-2"></i></h3>
+    <form method="GET" action="{{ url_for('minha_conta_page') }}" class="mb-3 d-flex align-items-center">
+        <input type="text" name="favoritos_search" class="form-control me-2 rounded-md" placeholder="Buscar favoritos..." value="{{ favoritos_search_query }}">
+        <button type="submit" class="btn btn-outline-primary rounded-md"><i class="fas fa-search"></i></button>
+    </form>
+    {% if meus_favoritos %}
+    <div class="table-responsive scrollable-card-body">
+        <table class="table table-hover mb-0">
+            <thead class="bg-light">
+                <tr>
+                    <th scope="col">Item</th>
+                    <th scope="col">Preço</th>
+                    <th scope="col">Vendedor</th>
+                    <th scope="col">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for favorito in meus_favoritos %}
+                <tr>
+                    <td>
+                        <div class="d-flex align-items-center">
+                            {% if favorito.anuncio.imagens_nomes %}
+                                {% set imagem_principal = favorito.anuncio.imagens_nomes.split(',')[0] %}
+                                <img src="{{ url_for('static', filename='uploads/anuncios/' + imagem_principal) }}" alt="Imagem do Anúncio" class="favorito-img me-2">
+                            {% else %}
+                                <img src="https://placehold.co/60x60/eeeeee/cccccc?text=Sem+Imagem" alt="Sem Imagem" class="favorito-img me-2">
+                            {% endif %}
+                            <a href="{{ url_for('detalhes_anuncio_page', anuncio_id=favorito.anuncio.id) }}" class="text-decoration-none text-dark">{{ favorito.anuncio.titulo }}</a>
+                        </div>
+                    </td>
+                    <td>R$ {{ "%.2f"|format(favorito.anuncio.preco) }}</td>
+                    <td><a href="{{ url_for('anuncios_do_vendedor_page', user_id=favorito.anuncio.user_id) }}" class="text-decoration-none text-info">{{ favorito.anuncio.autor.nome }}</a></td>
+                    <td>
+                        <form action="{{ url_for('toggle_favorito', anuncio_id=favorito.anuncio.id) }}" method="POST" class="d-inline">
+                            <button type="submit" class="btn btn-sm btn-outline-danger rounded-md" title="Remover"><i class="fas fa-trash-alt"></i></button>
+                        </form>
+                        <a href="{{ url_for('detalhes_anuncio_page', anuncio_id=favorito.anuncio.id) }}" class="btn btn-sm btn-outline-primary rounded-md" title="Ver Anúncio"><i class="fas fa-eye"></i></a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="text-center text-muted">Você ainda não favoritou nenhum anúncio.</p>
+    {% endif %}
+</div>
+
+{# SEÇÃO OFERTAS RECEBIDAS #}
+<div id="content-ofertas-recebidas" class="content-section" style="display: none;">
+    <h3 class="mb-4">Ofertas Recebidas <i class="fas fa-hand-holding-usd ms-2"></i></h3>
+    {% if ofertas_recebidas_paginadas.items %}
+    <div class="table-responsive scrollable-card-body">
+        <table class="table table-hover mb-0">
+            <thead class="bg-light">
+                <tr>
+                    <th scope="col">Anúncio</th>
+                    <th scope="col">Comprador</th>
+                    <th scope="col">Valor da Oferta</th>
+                    <th scope="col">Data</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for oferta in ofertas_recebidas_paginadas.items %}
+                <tr>
+                    <td><a href="{{ url_for('detalhes_anuncio_page', anuncio_id=oferta.anuncio.id) }}" class="text-decoration-none text-dark">{{ oferta.anuncio.titulo }}</a></td>
+                    <td>{{ oferta.comprador.nome }}</td>
+                    <td class="offer-value">R$ {{ "%.2f"|format(oferta.valor_oferta) }}</td>
+                    <td>{{ oferta.data_oferta|format_datetime }}</td>
+                    <td>
+                        {% if oferta.status == 'pendente' %}
+                        <span class="badge offer-status-pending">Pendente</span>
+                        {% elif oferta.status == 'aceita' %}
+                        <span class="badge offer-status-accepted">Aceita</span>
+                        {% elif oferta.status == 'rejeitada' %}
+                        <span class="badge offer-status-rejected">Rejeitada</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if oferta.status == 'pendente' %}
+                        <form action="{{ url_for('aceitar_oferta_action', oferta_id=oferta.id) }}" method="POST" class="d-inline">
+                            <button type="submit" class="btn btn-sm btn-success rounded-md" title="Aceitar"><i class="fas fa-check"></i></button>
+                        </form>
+                        <form action="{{ url_for('rejeitar_oferta_action', oferta_id=oferta.id) }}" method="POST" class="d-inline ms-1">
+                            <button type="submit" class="btn btn-sm btn-danger rounded-md" title="Rejeitar"><i class="fas fa-times"></i></button>
+                        </form>
+                        {% else %}
+                        <span class="text-muted">N/A</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {# Paginação para Ofertas Recebidas #}
+    <nav aria-label="Paginação de Ofertas Recebidas" class="pagination-container">
+        <ul class="pagination mb-0">
+            {% if ofertas_recebidas_paginadas.has_prev %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('minha_conta_page', ofertas_r_page=ofertas_recebidas_paginadas.prev_num, **request.args) }}#content-ofertas-recebidas" aria-label="Anterior">
+                    <span aria-hidden="true">&laquo;</span>
+                </a>
+            </li>
+            {% endif %}
+            {% for page_num in ofertas_recebidas_paginadas.iter_pages() %}
+                {% if page_num %}
+                    {% if ofertas_recebidas_paginadas.page == page_num %}
+                    <li class="page-item active" aria-current="page"><span class="page-link">{{ page_num }}</span></li>
+                    {% else %}
+                    <li class="page-item"><a class="page-link" href="{{ url_for('minha_conta_page', ofertas_r_page=page_num, **request.args) }}#content-ofertas-recebidas">{{ page_num }}</a></li>
+                    {% endif %}
+                {% else %}
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                {% endif %}
+            {% endfor %}
+            {% if ofertas_recebidas_paginadas.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('minha_conta_page', ofertas_r_page=ofertas_recebidas_paginadas.next_num, **request.args) }}#content-ofertas-recebidas" aria-label="Próxima">
+                    <span aria-hidden="true">&raquo;</span>
+                </a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% else %}
+    <p class="text-center text-muted">Você ainda não recebeu nenhuma oferta.</p>
+    {% endif %}
+</div>
+
+{# SEÇÃO OFERTAS FEITAS #}
+<div id="content-ofertas-feitas" class="content-section" style="display: none;">
+    <h3 class="mb-4">Ofertas Feitas <i class="fas fa-gift ms-2"></i></h3>
+    {% if ofertas_feitas_paginadas.items %}
+    <div class="table-responsive scrollable-card-body">
+        <table class="table table-hover mb-0">
+            <thead class="bg-light">
+                <tr>
+                    <th scope="col">Anúncio</th>
+                    <th scope="col">Vendedor</th>
+                    <th scope="col">Sua Oferta</th>
+                    <th scope="col">Data</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for oferta in ofertas_feitas_paginadas.items %}
+                <tr>
+                    <td><a href="{{ url_for('detalhes_anuncio_page', anuncio_id=oferta.anuncio.id) }}" class="text-decoration-none text-dark">{{ oferta.anuncio.titulo }}</a></td>
+                    <td><a href="{{ url_for('anuncios_do_vendedor_page', user_id=oferta.anuncio.user_id) }}" class="text-decoration-none text-info">{{ oferta.anuncio.autor.nome }}</a></td>
+                    <td class="offer-value">R$ {{ "%.2f"|format(oferta.valor_oferta) }}</td>
+                    <td>{{ oferta.data_oferta|format_datetime }}</td>
+                    <td>
+                        {% if oferta.status == 'pendente' %}
+                        <span class="badge offer-status-pending">Pendente</span>
+                        {% elif oferta.status == 'aceita' %}
+                        <span class="badge offer-status-accepted">Aceita</span>
+                        {% elif oferta.status == 'rejeitada' %}
+                        <span class="badge offer-status-rejected">Rejeitada</span>
+                        {% endif %}
+                            </td>
+                            <td>
+                                {% if oferta.status == 'pendente' %}
+                                <form action="{{ url_for('cancelar_oferta_action', oferta_id=oferta.id) }}" method="POST" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger rounded-md" title="Cancelar Oferta" onclick="return confirm('Tem certeza que deseja cancelar esta oferta?');"><i class="fas fa-times"></i></button>
+                                </form>
+                                {% else %}
+                                <span class="text-muted">N/A</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {# Paginação para Ofertas Feitas #}
+            <nav aria-label="Paginação de Ofertas Feitas" class="pagination-container">
+                <ul class="pagination mb-0">
+                    {% if ofertas_feitas_paginadas.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('minha_conta_page', ofertas_f_page=ofertas_feitas_paginadas.prev_num, **request.args) }}#content-ofertas-feitas" aria-label="Anterior">
+                            <span aria-hidden="true">&laquo;</span>
+                        </a>
+                    </li>
+                    {% endif %}
+                    {% for page_num in ofertas_feitas_paginadas.iter_pages() %}
+                        {% if page_num %}
+                            {% if ofertas_feitas_paginadas.page == page_num %}
+                            <li class="page-item active" aria-current="page"><span class="page-link">{{ page_num }}</span></li>
+                            {% else %}
+                            <li class="page-item"><a class="page-link" href="{{ url_for('minha_conta_page', ofertas_f_page=page_num, **request.args) }}#content-ofertas-feitas">{{ page_num }}</a></li>
+                            {% endif %}
+                        {% else %}
+                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                        {% endif %}
+                    {% endfor %}
+                    {% if ofertas_feitas_paginadas.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('minha_conta_page', ofertas_f_page=ofertas_feitas_paginadas.next_num, **request.args) }}#content-ofertas-feitas" aria-label="Próxima">
+                            <span aria-hidden="true">&raquo;</span>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% else %}
+            <p class="text-center text-muted">Você ainda não fez nenhuma oferta.</p>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+{# SEÇÃO EDITAR PERFIL #}
+<div id="content-perfil" class="content-section" style="display: none;">
+    <h3 class="mb-4">Editar Perfil <i class="fas fa-user-edit ms-2"></i></h3>
+    <form method="POST" class="profile-form">
+        <div class="mb-3">
+            <label for="perfil_nome" class="form-label">Nome Completo</label>
+            <input type="text" class="form-control rounded-md" id="perfil_nome" name="perfil_nome" value="{{ user.nome }}" required>
+        </div>
+        <div class="mb-3">
+            <label for="perfil_email" class="form-label">Email</label>
+            <input type="email" class="form-control rounded-md" id="perfil_email" name="perfil_email" value="{{ user.email }}" disabled>
+            <small class="form-text text-muted">O email não pode ser alterado.</small>
+        </div>
+        <div class="mb-3">
+            <label for="perfil_cpf" class="form-label">CPF</label>
+            <input type="text" class="form-control rounded-md" id="perfil_cpf" name="perfil_cpf" value="{{ user.cpf }}" disabled>
+            <small class="form-text text-muted">O CPF não pode ser alterado.</small>
+        </div>
+        <div class="mb-3">
+            <label for="perfil_endereco" class="form-label">Endereço</label>
+            <input type="text" class="form-control rounded-md" id="perfil_endereco" name="perfil_endereco" value="{{ user.endereco }}" required>
+        </div>
+        <div class="mb-3">
+            <label for="perfil_cep" class="form-label">CEP</label>
+            <input type="text" class="form-control rounded-md" id="perfil_cep" name="perfil_cep" value="{{ user.cep }}" required maxlength="9" pattern="\d{5}-\d{3}" placeholder="00000-000">
+        </div>
+        <hr class="my-4">
+        <h5>Alterar Senha</h5>
+        <div class="mb-3">
+            <label for="perfil_senha_atual" class="form-label">Senha Atual</label>
+            <input type="password" class="form-control rounded-md" id="perfil_senha_atual" name="perfil_senha_atual">
+        </div>
+        <div class="mb-3">
+            <label for="perfil_nova_senha" class="form-label">Nova Senha</label>
+            <input type="password" class="form-control rounded-md" id="perfil_nova_senha" name="perfil_nova_senha">
+        </div>
+        <div class="mb-3">
+            <label for="perfil_confirmar_nova_senha" class="form-label">Confirmar Nova Senha</label>
+            <input type="password" class="form-control rounded-md" id="perfil_confirmar_nova_senha" name="perfil_confirmar_nova_senha">
+        </div>
+        <button type="submit" class="btn btn-primary rounded-md shadow-sm">Atualizar Perfil</button>
+    </form>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
@@ -66,13 +415,69 @@ document.addEventListener('DOMContentLoaded', function() {
     const cepInput = document.getElementById('perfil_cep');
     if (cepInput) {
         cepInput.addEventListener('input', function(e) {
-            let value = e.target.value.replace(/\D/g, ''); 
+            let value = e.target.value.replace(/\D/g, '');
             if (value.length > 5) {
-                value = value.substring(0, 5) + '-' + value.substring(5, 8); 
+                value = value.substring(0, 5) + '-' + value.substring(5, 8);
             }
             e.target.value = value.substring(0, 9);
         });
     }
+
+    const showSectionButtons = document.querySelectorAll('.js-show-section');
+    const contentSections = document.querySelectorAll('.content-section');
+    const welcomeAlert = document.querySelector('.alert.alert-info');
+
+    function hideAllSections() {
+        contentSections.forEach(section => {
+            section.style.display = 'none';
+        });
+        if (welcomeAlert) {
+            welcomeAlert.style.display = 'none'; // Esconde a mensagem de boas-vindas também
+        }
+    }
+
+    function showSection(targetId) {
+        hideAllSections(); // Primeiro, esconde tudo
+
+        const targetElement = document.querySelector(targetId);
+        if (targetElement) {
+            targetElement.style.display = 'block'; // Mostra a seção desejada
+            targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+
+    showSectionButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault(); // Impede o comportamento padrão do link de âncora
+            const targetId = this.getAttribute('href'); // Obtém o ID da seção alvo
+            showSection(targetId);
+            
+            // Atualiza o hash da URL para manter a navegação e o histórico
+            window.history.pushState(null, '', targetId);
+        });
+    });
+
+    // Lógica para lidar com o carregamento da página com um hash na URL
+    function handleInitialLoadOrHashChange() {
+        const hash = window.location.hash;
+        if (hash && hash.startsWith('#content-')) {
+            showSection(hash); // Mostra a seção correspondente ao hash
+        } else {
+            // Se não houver hash válido para uma seção, mostre a mensagem de boas-vindas
+            // e oculte todas as outras seções de conteúdo.
+            hideAllSections(); // Garante que tudo esteja oculto
+            if (welcomeAlert) {
+                welcomeAlert.style.display = 'block'; // Mostra a mensagem de boas-vindas
+            }
+        }
+    }
+
+    // Chama a função ao carregar a página
+    handleInitialLoadOrHashChange();
+
+    // Chama a função quando o hash da URL muda (ex: quando o usuário navega com o histórico do navegador)
+    window.addEventListener('popstate', handleInitialLoadOrHashChange);
+
 });
 </script>
 {% endblock %}

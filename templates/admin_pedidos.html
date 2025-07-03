@@ -25,7 +25,7 @@
                     {% for pedido in pedidos %}
                     <tr>
                         <td>#{{ pedido.id }}</td>
-                        <td>{{ pedido.user.nome }}</td>
+                        <td>{{ pedido.comprador.nome }}</td>
                         <td>{{ pedido.data_criacao.strftime('%d/%m/%Y %H:%M') }}</td>
                         <td>R$ {{ "%.2f"|format(pedido.total_brl) }}</td>
                         <td>
@@ -49,8 +49,8 @@
                         </td>
                         <td>
                             {% if pedido.status == 'pendente' %}
-                                <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#modalConfirmar{{ pedido.id }}">
-                                    <i class="fas fa-check"></i> Confirmar Pagamento
+                                <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#confirmarPagamentoModal{{ pedido.id }}">
+                                    Confirmar Pagamento
                                 </button>
                             {% elif pedido.status == 'pago' %}
                                 <span class="text-success">
@@ -63,44 +63,46 @@
                         </td>
                     </tr>
                     
-                    <!-- Modal para confirmar pagamento -->
+                    <!-- Modal de Confirmação de Pagamento -->
                     {% if pedido.status == 'pendente' %}
-                    <div class="modal fade" id="modalConfirmar{{ pedido.id }}" tabindex="-1">
+                    <div class="modal fade" id="confirmarPagamentoModal{{ pedido.id }}" tabindex="-1">
                         <div class="modal-dialog">
                             <div class="modal-content">
                                 <div class="modal-header">
                                     <h5 class="modal-title">Confirmar Pagamento - Pedido #{{ pedido.id }}</h5>
                                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                 </div>
-                                <form action="{{ url_for('confirmar_pagamento_admin', pedido_id=pedido.id) }}" method="POST">
-                                    <div class="modal-body">
-                                        <div class="mb-3">
-                                            <label class="form-label">Detalhes do Pedido:</label>
-                                            <ul class="list-unstyled">
-                                                <li><strong>Usuário:</strong> {{ pedido.user.nome }}</li>
-                                                <li><strong>Total:</strong> R$ {{ "%.2f"|format(pedido.total_brl) }}</li>
-                                                <li><strong>Criptomoeda:</strong> {{ pedido.cripto_moeda.upper() }}</li>
-                                                <li><strong>Valor esperado:</strong> {{ "%.8f"|format(pedido.cripto_valor) if pedido.cripto_moeda == 'bitcoin' else "%.6f"|format(pedido.cripto_valor) }} {{ pedido.cripto_moeda.upper() }}</li>
-                                                <li><strong>Endereço:</strong> <code>{{ pedido.cripto_endereco }}</code></li>
-                                            </ul>
+                                <div class="modal-body">
+                                    <ul class="nav nav-tabs" id="paymentTabs{{ pedido.id }}" role="tablist">
+                                        <li class="nav-item" role="presentation">
+                                            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#direct{{ pedido.id }}" type="button">Direto</button>
+                                        </li>
+                                        <li class="nav-item" role="presentation">
+                                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#bitcoin{{ pedido.id }}" type="button">Bitcoin</button>
+                                        </li>
+                                    </ul>
+                                    
+                                    <div class="tab-content mt-3">
+                                        <!-- Aba de Confirmação Direta -->
+                                        <div class="tab-pane fade show active" id="direct{{ pedido.id }}">
+                                            <form action="{{ url_for('confirmar_pagamento_admin', pedido_id=pedido.id) }}" method="POST">
+                                                <p>Tem certeza que deseja confirmar o pagamento deste pedido?</p>
+                                                <button type="submit" class="btn btn-success">Confirmar Pagamento</button>
+                                            </form>
                                         </div>
-                                        <div class="mb-3">
-                                            <label for="hash_transacao" class="form-label">Hash da Transação (opcional):</label>
-                                            <input type="text" class="form-control" id="hash_transacao" name="hash_transacao" placeholder="0x... ou txid...">
-                                            <div class="form-text">Cole aqui o hash/ID da transação para registro.</div>
-                                        </div>
-                                        <div class="alert alert-warning">
-                                            <i class="fas fa-exclamation-triangle"></i>
-                                            <strong>Atenção:</strong> Confirme apenas se você recebeu o pagamento na sua carteira.
+                                        
+                                        <!-- Aba de Confirmação Bitcoin -->
+                                        <div class="tab-pane fade" id="bitcoin{{ pedido.id }}">
+                                            <form action="{{ url_for('confirmar_pagamento_bitcoin_admin', pedido_id=pedido.id) }}" method="POST">
+                                                <div class="mb-3">
+                                                    <label for="hash_transacao{{ pedido.id }}" class="form-label">Hash da Transação Bitcoin</label>
+                                                    <input type="text" class="form-control" id="hash_transacao{{ pedido.id }}" name="hash_transacao" required>
+                                                </div>
+                                                <button type="submit" class="btn btn-success">Verificar e Confirmar</button>
+                                            </form>
                                         </div>
                                     </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                        <button type="submit" class="btn btn-success">
-                                            <i class="fas fa-check"></i> Confirmar Recebimento
-                                        </button>
-                                    </div>
-                                </form>
+                                </div>
                             </div>
                         </div>
                     </div>

@@ -81,7 +81,7 @@
                         <label for="cep-frete" class="form-label">Calcule o Frete:</label>
                         <div class="input-group input-group-sm mb-2" style="max-width: 250px;">
                             <input type="text" class="form-control" id="cep-frete" placeholder="CEP" maxlength="9" onkeyup="formatarCEP(this)">
-                            <button class="btn btn-outline-primary" type="button" onclick="calcularFreteAnuncio({{ anuncio.id }}, '{{ anuncio.autor.cep or '' }}')">
+                            <button class="btn btn-outline-primary" type="button" onclick="calcularFreteAnuncio({{ anuncio.id }}, '{{ anuncio.autor.cep }}')">
                                 <i class="fas fa-truck"></i>
                             </button>
                         </div>
@@ -92,6 +92,16 @@
                             </div>
                             <small class="text-muted">Calculando...</small>
                         </div>
+                        {% if not anuncio.autor.cep %}
+                            <div class="alert alert-warning mt-2">
+                                <small>O vendedor não possui CEP cadastrado. Não será possível calcular o frete.</small>
+                            </div>
+                        {% endif %}
+                        {% if not (anuncio.largura and anuncio.altura and anuncio.comprimento and anuncio.peso) %}
+                            <div class="alert alert-warning mt-2">
+                                <small>O anúncio não possui todas as dimensões necessárias para cálculo do frete.</small>
+                            </div>
+                        {% endif %}
                     </div>
                     
                     {% if 'user_id' in session %}
@@ -181,24 +191,29 @@ function calcularFreteAnuncio(anuncioId, cepVendedor) {
     const input = document.getElementById('cep-frete');
     if (!input) return;
     const cepDestino = input.value.replace(/\D/g, '');
-    if (!cepVendedor) {
+    
+    // Verifica se o CEP do vendedor está disponível
+    if (!cepVendedor || cepVendedor.trim() === '') {
         alert('O vendedor não informou o CEP de origem. Não é possível calcular o frete.');
         return;
     }
+
+    // Verifica se o CEP de destino é válido
     if (cepDestino.length !== 8) {
         alert('Por favor, insira um CEP válido.');
         return;
     }
+    
     document.getElementById('opcoes-frete-anuncio').innerHTML = '';
     document.getElementById('opcoes-frete-anuncio').classList.add('d-none');
     document.getElementById('loading-frete-anuncio').classList.remove('d-none');
+
     fetch('/api/calcular-frete', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-            item_id: null, // Não há item de carrinho, só anúncio
             anuncio_id: anuncioId,
             cep_destino: cepDestino
         })
@@ -206,6 +221,7 @@ function calcularFreteAnuncio(anuncioId, cepVendedor) {
     .then(response => response.json())
     .then(data => {
         document.getElementById('loading-frete-anuncio').classList.add('d-none');
+        
         if (data.error) {
             document.getElementById('opcoes-frete-anuncio').classList.remove('d-none');
             document.getElementById('opcoes-frete-anuncio').innerHTML = `<div class='text-danger'>${data.error}</div>`;
@@ -219,6 +235,7 @@ function calcularFreteAnuncio(anuncioId, cepVendedor) {
         }
     })
     .catch(error => {
+        console.error('Erro ao calcular frete:', error);
         document.getElementById('loading-frete-anuncio').classList.add('d-none');
         document.getElementById('opcoes-frete-anuncio').classList.remove('d-none');
         document.getElementById('opcoes-frete-anuncio').innerHTML = `<div class='text-danger'>Erro ao calcular frete. Tente novamente.</div>`;
@@ -235,7 +252,7 @@ function mostrarOpcoesFreteAnuncio(opcoes) {
             <div class="d-flex justify-content-between align-items-center p-2 border rounded">
                 <div>
                     <small class="fw-bold">${opcao.servico}</small>
-                    <br><small class="text-muted">Prazo: ${opcao.prazo} dias úteis</small>
+                    <br><small class="text-muted">${opcao.empresa} - Prazo: ${opcao.prazo} dias úteis</small>
                 </div>
                 <div class="text-end">
                     <small class="fw-bold">R$ ${opcao.valor.toFixed(2)}</small>
